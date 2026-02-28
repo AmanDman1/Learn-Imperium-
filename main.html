@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Automated Tasks</title>
+    <link rel="stylesheet" href="main.css">
+    <style>
+        /* Ensuring the grid remains consistent */
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            padding: 20px;
+        }
+
+        /* ACCESSIBILITY FOCUS: Makes the selected card glow bright */
+        .card:focus {
+            outline: 4px solid #00e5ff;
+            outline-offset: 10px;
+            transform: translateY(-10px);
+            background: rgba(0, 229, 255, 0.1);
+        }
+
+        .card {
+            cursor: pointer;
+            transition: transform 0.3s ease;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 15px;
+            background: var(--card-bg, #1a1a1a);
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .btn {
+            display: inline-block;
+            text-decoration: none;
+            padding: 10px 20px;
+            background-color: var(--primary, #00e5ff);
+            color: #000;
+            border-radius: 5px;
+            font-weight: bold;
+            margin-top: 10px;
+            pointer-events: none; /* Let the card handle the click */
+        }
+    </style>
+</head>
+<body>
+    <div class="theme-switch-wrapper">
+        <label class="theme-switch" for="checkbox">
+            <input type="checkbox" id="checkbox" checked class="nav-item" aria-label="Switch Theme"/>
+            <div class="slider round"></div>
+        </label>
+        <em>Switch Theme</em>
+    </div>
+
+    <h1 id="hum1" tabindex="0">AI automated tasks</h1>
+
+    <div class="grid-container">
+        <div class="card nav-item" tabindex="0" data-href="calculator.html" data-speech="Calculator: Helps with math and grading.">
+            <div class="card-inner">
+                <h2>Calculator</h2>
+                <p>Helps with adding, subtracting, multiplying, and dividing grades.</p>
+                <span class="btn">Get Started</span>
+            </div>
+        </div>
+
+        <div class="card nav-item" tabindex="0" data-href="book.html" data-speech="Academic Book: PDF reader with physics and math support.">
+            <div class="card-inner">
+                <h2>Academical Book</h2>
+                <p>Books ranging from grade 9 to grade 12 including Teachers guide.</p>
+                <span class="btn">Get Started</span>
+            </div>
+        </div>
+
+        <div class="card nav-item" tabindex="0" data-href="analysis.html" data-speech="Grade Analysis: Predict and analyze performance.">
+            <div class="card-inner">
+                <h2>AI Grade Analysis</h2>
+                <p>Analyze grades, predict performance, and get real time AI feedback.</p>
+                <span class="btn">Get Started</span>
+            </div>
+        </div>
+          <div class="card nav-item" tabindex="0" data-href="matric.html" data-speech="Matric Calculator: Simple and fast results.">
+            <div class="card-inner">
+                <h2>Matric Calculator</h2>
+                <p>Calculate matric results faster and simpler.</p>
+                <span class="btn">Get Started</span>
+            </div>
+        </div>
+
+        <div class="card nav-item" tabindex="0" data-href="voicescribe.html" data-speech="Voice Scribe: Listening to speech and saving it.">
+            <div class="card-inner">
+                <h2>Your voice Script</h2>
+                <p>Works by listening to your speech and then saving it.</p>
+                <span class="btn">Get Started</span>
+            </div>
+        </div>
+
+        <div class="card nav-item" tabindex="0" data-href="amharicreader.html" data-speech="Amharic AI Lens: Scan books or PDF and hear them in Amharic.">
+            <div class="card-inner">
+                <h2>Amharic Reader</h2>
+                <p>Hear English PDF or Photos read aloud in Amharic.</p>
+                <span class="btn">Get Started</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const synth = window.speechSynthesis;
+        const navItems = document.querySelectorAll('.nav-item');
+        let currentIndex = -1;
+
+        function speak(text) {
+            synth.cancel();
+            const utter = new SpeechSynthesisUtterance(text);
+            utter.rate = 1.0;
+            synth.speak(utter);
+        }
+
+        // --- ARROW KEY NAVIGATION SYSTEM ---
+        window.addEventListener('keydown', (e) => {
+            if (["ArrowUp", "ArrowDown", "ArrowRight", "ArrowLeft"].includes(e.key)) {
+                e.preventDefault();
+                
+                if (e.key === "ArrowDown" || e.key === "ArrowRight") {
+                    currentIndex = (currentIndex + 1) % navItems.length;
+                } else if (e.key === "ArrowUp" || e.key === "ArrowLeft") {
+                    currentIndex = (currentIndex - 1 + navItems.length) % navItems.length;
+                }
+                
+                navItems[currentIndex].focus();
+            }
+
+            // SPACEBAR OR ENTER TO ACTIVATE
+            if ((e.key === " " || e.key === "Enter") && currentIndex !== -1) {
+                if (e.key === " ") e.preventDefault();
+                const target = navItems[currentIndex].getAttribute('data-href');
+                if(target) window.location.href = target;
+            }
+        });
+
+        // --- HANDLE FOCUS AND CLICK ---
+        navItems.forEach(item => {
+            // When user focuses via arrows
+            item.addEventListener('focus', () => {
+                const text = item.getAttribute('data-speech') || item.innerText;
+                speak(text);
+            });
+
+            // When user clicks via mouse
+            item.addEventListener('click', () => {
+                const target = item.getAttribute('data-href');
+                if(target) window.location.href = target;
+            });
+        });
+
+        // Theme Switch Logic
+        const toggleSwitch = document.querySelector('#checkbox');
+        toggleSwitch.addEventListener('change', (e) => {
+            const mode = e.target.checked ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', mode);
+            speak(mode + " mode activated");
+        }, false);
+
+        // Auto-welcome for this page
+        window.onload = () => {
+            setTimeout(() => speak("Service Hub. Use arrow keys to choose a tool."), 1000);
+        };
+    </script>
+</body>
+</html>

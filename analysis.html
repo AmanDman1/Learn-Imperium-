@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Omni-Analytics | Dual Logic Portal</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root { --primary: #00e5ff; --bg: #050a10; --card: #111a24; --gold: #ffd700; --red: #ff4757; --green: #2ed573; }
+        body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; margin: 0; }
+        
+        :focus {
+            outline: 4px solid var(--primary) !important;
+            outline-offset: 4px;
+            box-shadow: 0 0 25px var(--primary);
+            background: rgba(0, 229, 255, 0.1) !important;
+        }
+
+        .modal-content.large {
+            width: 90%; max-width: 1000px; background: var(--card); border: 2px solid var(--primary);
+            border-radius: 20px; padding: 30px; 
+        }
+
+        .stats-layout { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 30px; margin-top: 20px; }
+        .chart-wrapper { background: rgba(0,0,0,0.3); padding: 20px; border-radius: 15px; height: 500px; }
+
+        .ai-report-container { display: flex; flex-direction: column; gap: 12px; overflow-y: auto; max-height: 550px; }
+        .report-box { padding: 15px; border-radius: 12px; border-left: 5px solid; }
+        .strength { border-color: var(--green); background: rgba(46, 213, 115, 0.1); }
+        .weakness { border-color: var(--red); background: rgba(255, 71, 87, 0.1); }
+        .advice-box { border-color: var(--gold); background: rgba(255, 215, 0, 0.05); border-left: 5px solid var(--gold); margin-bottom: 5px; }
+
+        .report-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1px; color: var(--gold); margin-bottom: 5px; }
+        .report-text { font-size: 1rem; font-weight: 600; }
+        .advice-text { font-size: 0.85rem; line-height: 1.4; color: #ddd; }
+
+        .scores-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+        .score-input input { width: 85%; padding: 8px; background: #000; border: 1px solid #333; color: white; border-radius: 5px; }
+        
+        .btn-primary { padding: 10px 20px; background: var(--primary); border: none; cursor: pointer; font-weight: bold; border-radius: 5px; color: black; }
+        .btn-exit { padding: 10px 20px; background: var(--red); border: none; cursor: pointer; font-weight: bold; border-radius: 5px; color: white; margin-left: 10px; }
+    </style>
+</head>
+<body tabindex="-1">
+
+    <div class="container">
+        <header style="padding: 30px; text-align: center;">
+            <h1 style="font-family: 'Orbitron'; color: var(--primary);">AI STUDENT <span style="color:white">ANALYTICS</span></h1>
+            <button id="addStudentBtn" class="btn-primary nav-item" aria-label="Add New Student Button"> + ADD STUDENT</button>
+        </header>
+        <div id="studentGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; padding: 20px;"></div>
+    </div>
+
+    <div id="studentModal" class="modal" style="display:none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); justify-content: center; align-items: center; z-index: 100;">
+        <div class="modal-content" style="background: var(--card); padding: 25px; border-radius: 15px; width: 450px;">
+            <h2 style="color:var(--primary)">STUDENT DATA</h2>
+            <div id="streamToggle" style="display:flex; gap:10px; margin-bottom:15px;">
+                <button class="stream-btn nav-item-modal" id="natBtn" onclick="setStream('natural')" aria-label="Natural Sciences" style="flex:1; padding:8px; cursor:pointer;">NATURAL</button>
+                <button class="stream-btn nav-item-modal" id="socBtn" onclick="setStream('social')" aria-label="Social Sciences" style="flex:1; padding:8px; cursor:pointer;">SOCIAL</button>
+            </div>
+            <form id="studentForm">
+                <input type="text" id="studentName" class="nav-item-modal" placeholder="Student Name" aria-label="Enter Name" required style="width: 90%; padding: 10px; margin-bottom: 15px; background: #000; border: 1px solid #333; color: white;">
+                <div id="dynamicScores" class="scores-grid"></div>
+                <div style="margin-top: 20px; display: flex; justify-content: space-between;">
+                    <button type="submit" class="btn-primary nav-item-modal" aria-label="Save Student Data" style="flex: 1;">SAVE DATA</button>
+                    <button type="button" class="btn-exit nav-item-modal" aria-label="Exit" onclick="closeModal()" style="flex: 1;">EXIT</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="statsModal" class="modal" style="display:none; position: fixed; inset: 0; background: rgba(0,0,0,0.95); justify-content: center; align-items: center; z-index: 200;">
+        <div class="modal-content large">
+            <h2 id="statsName" style="color: var(--primary); margin-bottom: 15px;">ANALYSIS</h2>
+            <div class="stats-layout">
+                <div class="chart-wrapper"><canvas id="performanceChart"></canvas></div>
+                <div class="ai-report-container" id="reportSide">
+                    <div class="report-box strength">
+                        <div class="report-label">Top Skill</div>
+                        <div id="strengthText" class="report-text">---</div>
+                    </div>
+                </div>
+            </div>
+            <button onclick="closeStatsModal()" class="btn-primary nav-item-stats" aria-label="Close Report" style="margin-top: 20px; width: 200px;">CLOSE REPORT</button>
+        </div>
+    </div>
+
+    <script>
+        let studentDB = JSON.parse(localStorage.getItem('student_analytics_db')) || [];
+        let currentStream = 'natural';
+        let currentChart = null;
+        let navIndex = -1;
+        const synth = window.speechSynthesis;
+
+        const subjects = {
+            natural: ['English', 'SAT', 'ICT', 'Agriculture', 'CHS', 'Chemistry', 'Math', 'Biology', 'Physics'],
+            social: ['English', 'SAT', 'ICT', 'Geography', 'History', 'Economics', 'Math', 'Civics', 'Marketing']
+        };
+
+        const studyAdvice = {
+            english: "Practice active reading by summarizing each paragraph.",
+            sat: "Master time management and the process of elimination.",
+            ict: "Build small logic projects to visualize system connections.",
+            agriculture: "Use mind-maps for soil types and crop cycles.",
+            chs: "Understand historical context over simple memorization.",
+            chemistry: "Study periodic trends to predict chemical behavior.",
+            math: "Solve 5 practice problems for every 1 formula learned.",
+            biology: "Sketch and label diagrams from memory to boost recall.",
+            physics: "Apply laws of motion to real-world objects around you.",
+            geography: "Use visual maps to connect climate to locations.",
+            history: "Connect historical events to current global affairs.",
+            economics: "Relate market theory to daily spending habits.",
+            civics: "Read local news to see government policies in action.",
+            marketing: "Analyze successful ads to see psychological triggers."
+        };
+
+        function speakUI(text) {
+            const feedback = new SpeechSynthesisUtterance(text);
+            feedback.rate = 1.4; synth.cancel(); synth.speak(feedback);
+        }
+
+        // --- UPDATED KEYBOARD LOGIC (SPACE FIX) ---
+        window.addEventListener('keydown', (e) => {
+            let selector = ".nav-item";
+            if (document.getElementById('studentModal').style.display === 'flex') selector = ".nav-item-modal";
+            else if (document.getElementById('statsModal').style.display === 'flex') selector = ".nav-item-stats";
+
+            const items = document.querySelectorAll(selector);
+            if (items.length === 0) return;
+
+            if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+                e.preventDefault();
+                navIndex = (navIndex + 1) % items.length;
+                items[navIndex].focus();
+                speakUI(items[navIndex].getAttribute('aria-label'));
+            } 
+            else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+                e.preventDefault();
+                navIndex = (navIndex - 1 + items.length) % items.length;
+                items[navIndex].focus();
+                speakUI(items[navIndex].getAttribute('aria-label'));
+            }
+            // FIXED: Space bar now triggers the click for buttons and student cards
+            else if (e.key === "Enter" || e.key === " ") {
+                if (document.activeElement.tagName !== "INPUT" && navIndex !== -1) {
+                    e.preventDefault();
+                    items[navIndex].click();
+                }
+            }
+        });
+
+        function setStream(s) {
+            currentStream = s;
+            document.getElementById('natBtn').style.background = s==='natural' ? '#00e5ff' : 'transparent';
+            document.getElementById('socBtn').style.background = s==='social' ? '#00e5ff' : 'transparent';
+            renderScores();
+        }
+
+        function renderScores() {
+            const container = document.getElementById('dynamicScores');
+            container.innerHTML = subjects[currentStream].map(sub => `
+                <div class="score-input">
+                    <label style="font-size:0.6rem;">${sub}</label>
+                    <input type="number" id="${sub.toLowerCase()}" class="nav-item-modal" aria-label="${sub} score" required min="0" max="100">
+                </div>
+            `).join('');
+        }
+
+        document.getElementById('studentForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const scores = {};
+            subjects[currentStream].forEach(sub => {
+                scores[sub.toLowerCase()] = Number(document.getElementById(sub.toLowerCase()).value);
+            });
+            studentDB.push({ id: Date.now().toString(), name: document.getElementById('studentName').value, stream: currentStream, scores: scores });
+            localStorage.setItem('student_analytics_db', JSON.stringify(studentDB));
+            renderGrid(); closeModal();
+        });
+
+        function renderGrid() {
+            const grid = document.getElementById('studentGrid'); grid.innerHTML = '';
+            studentDB.forEach((s) => {
+                const card = document.createElement('div');
+                card.className = "nav-item";
+                card.tabIndex = 0;
+                card.setAttribute('aria-label', `Data for ${s.name}`); 
+                card.style.cssText = "background: var(--card); padding: 15px; border-radius: 10px; border: 1px solid #333; cursor: pointer;";
+                card.onclick = () => showStats(s);
+                card.innerHTML = `<h3 style="margin:0; color:var(--primary)">${s.name}</h3><p style="opacity:0.6; font-size:0.8rem;">${s.stream.toUpperCase()}</p>`;
+                grid.appendChild(card);
+            });
+            navIndex = -1;
+        }
+
+        function showStats(s) {
+            document.getElementById('statsModal').style.display = 'flex';
+            document.getElementById('statsName').innerText = s.name.toUpperCase();
+            navIndex = -1;
+
+            const entries = Object.entries(s.scores).sort((a,b) => b[1] - a[1]);
+            const strongest = entries[0];
+            const lowestSubjects = entries.filter(e => e[1] === entries[entries.length-1][1]);
+            
+            document.getElementById('strengthText').innerText = `${strongest[0].toUpperCase()} (${strongest[1]}%)`;
+            const reportSide = document.getElementById('reportSide');
+            document.querySelectorAll('.advice-box, .weakness').forEach(el => el.remove());
+
+            // UPDATED: PERSONALIZED AI VOICE FEEDBACK
+            let voiceScript = `This is my analysis for ${s.name}. I found that your top skill is ${strongest[0]}. `;
+            
+            lowestSubjects.forEach(item => {
+                const subName = item[0];
+                const advice = studyAdvice[subName] || "Keep practicing!";
+                const wBox = document.createElement('div');
+                wBox.className = "report-box weakness";
+                wBox.innerHTML = `<div class="report-label">Growth Area</div><div class="report-text">${subName.toUpperCase()}</div>`;
+                const aBox = document.createElement('div');
+                aBox.className = "report-box advice-box";
+                aBox.innerHTML = `<div class="report-label">My Advice for you</div><div class="advice-text">${advice}</div>`;
+                reportSide.appendChild(wBox);
+                reportSide.appendChild(aBox);
+                
+                // FIXED: Now uses "My advice for you is..."
+                voiceScript += `I noticed a growth area in ${subName}. My advice for you is: ${advice} `;
+            });
+
+            synth.cancel();
+            synth.speak(new SpeechSynthesisUtterance(voiceScript));
+
+            if (currentChart) currentChart.destroy();
+            currentChart = new Chart(document.getElementById('performanceChart'), {
+                type: 'radar',
+                data: {
+                    labels: Object.keys(s.scores).map(l => l.toUpperCase()),
+                    datasets: [{ label: 'SKILL', data: Object.values(s.scores), backgroundColor: 'rgba(0, 229, 255, 0.2)', borderColor: '#00e5ff', borderWidth: 3 }]
+                },
+                options: { scales: { r: { beginAtZero: true, max: 100, ticks: { display: false }, grid: { color: '#333' }, pointLabels: { color: '#fff' } } }, maintainAspectRatio: false }
+            });
+        }
+
+        function closeModal() { document.getElementById('studentModal').style.display = 'none'; navIndex = -1; }
+        function closeStatsModal() { document.getElementById('statsModal').style.display = 'none'; navIndex = -1; }
+        
+        document.getElementById('addStudentBtn').onclick = () => { 
+            document.getElementById('studentForm').reset(); setStream('natural'); 
+            document.getElementById('studentModal').style.display = 'flex'; navIndex = -1;
+        };
+        
+        setStream('natural');
+        renderGrid();
+    </script>
+</body>
+</html>

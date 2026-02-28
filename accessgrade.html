@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apex AI | Student Grade Analysis</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg: #0a0a0b;
+            --card-bg: #161618;
+            --accent: #00d2ff;
+            --text: #ffffff;
+            --text-dim: #a0a0a1;
+            --input-border: #333;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 20px;
+        }
+
+        h2 { font-weight: 800; font-size: 2rem; margin-bottom: 30px; }
+        h2 span { color: var(--accent); }
+
+        .main-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            max-width: 1100px;
+            width: 100%;
+        }
+
+        /* Form Styling */
+        #gradeForm {
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 15px;
+            border: 1px solid var(--input-border);
+        }
+
+        .input-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        label {
+            display: flex;
+            flex-direction: column;
+            font-size: 0.85rem;
+            color: var(--text-dim);
+        }
+
+        input {
+            background: #222;
+            border: 1px solid var(--input-border);
+            color: white;
+            padding: 10px;
+            border-radius: 6px;
+            margin-top: 5px;
+            outline: none;
+        }
+
+        input:focus { border-color: var(--accent); }
+
+        button {
+            grid-column: span 2;
+            margin-top: 20px;
+            background: var(--accent);
+            color: #000;
+            border: none;
+            padding: 12px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            width: 100%;
+            transition: 0.3s;
+        }
+
+        button:hover { opacity: 0.9; transform: translateY(-2px); }
+
+        /* Analysis & Chart Box */
+        .right-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        #analysis {
+            background: var(--card-bg);
+            padding: 25px;
+            border-radius: 15px;
+            border-left: 5px solid var(--accent);
+        }
+
+        #analysis h3 { margin-top: 0; color: var(--accent); }
+        #analysis p { margin: 10px 0; font-size: 1rem; }
+
+        .chart-box {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 15px;
+            height: 300px;
+        }
+
+        @media (max-width: 850px) {
+            .main-container { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <h2 id="studentName">Apex<span>Grades</span> Analyzer</h2>
+
+    <div class="main-container">
+        <form id="gradeForm">
+            <div class="input-grid">
+                <label>Math <input type="number" id="math" value="0" min="0" max="100"></label>
+                <label>English <input type="number" id="english" value="0" min="0" max="100"></label>
+                <label>CHS <input type="number" id="chs" value="0" min="0" max="100"></label>
+                <label>Agriculture <input type="number" id="agriculture" value="0" min="0" max="100"></label>
+                <label>IT <input type="number" id="it" value="0" min="0" max="100"></label>
+                <label>Physics <input type="number" id="physics" value="0" min="0" max="100"></label>
+                <label>Biology <input type="number" id="biology" value="0" min="0" max="100"></label>
+                <label>Chemistry <input type="number" id="chemistry" value="0" min="0" max="100"></label>
+                <label>SAT <input type="number" id="sat" value="0" min="0" max="100"></label>
+            </div>
+            <button type="submit">Generate AI Analysis</button>
+        </form>
+
+        <div class="right-panel">
+            <div id="analysis">
+                <h3>Analysis Result</h3>
+                <p id="total">Total Score: --</p>
+                <p id="average">Average Percentage: --</p>
+                <p id="rank">Performance Rank: --</p>
+                <p id="prediction">AI Prediction: --</p>
+                <p id="recommendation">Recommendation: --</p>
+                <small style="color:var(--accent)">=� Highlight text to hear AI Voice</small>
+            </div>
+
+            <div class="chart-box">
+                <canvas id="gradeChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('gradeForm');
+        let myChart = null;
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+
+            // 1. Gather Scores
+            const data = {
+                Math: Number(document.getElementById('math').value),
+                English: Number(document.getElementById('english').value),
+                CHS: Number(document.getElementById('chs').value),
+                Agriculture: Number(document.getElementById('agriculture').value),
+                IT: Number(document.getElementById('it').value),
+                Physics: Number(document.getElementById('physics').value),
+                Biology: Number(document.getElementById('biology').value),
+                Chemistry: Number(document.getElementById('chemistry').value),
+                SAT: Number(document.getElementById('sat').value)
+            };
+
+            // 2. Perform Calculations
+            const scores = Object.values(data);
+            const total = scores.reduce((a, b) => a + b, 0);
+            const avg = (total / scores.length).toFixed(1);
+
+            // 3. Update Analysis Text
+            document.getElementById('total').innerText = `Total Score: ${total} / 900`;
+            document.getElementById('average').innerText = `Average Percentage: ${avg}%`;
+            
+            let rank = avg >= 90 ? "Elite (A+)" : avg >= 75 ? "Superior (B+)" : "Standard (C)";
+            let pred = avg >= 70 ? "High probability of University Admission." : "Needs targeted improvement for college entry.";
+            let rec = avg >= 80 ? "Maintain current pace and focus on SAT scholarship scores." : "Schedule extra focus on Science subjects.";
+
+            document.getElementById('rank').innerText = `Performance Rank: ${rank}`;
+            document.getElementById('prediction').innerText = `AI Prediction: ${pred}`;
+            document.getElementById('recommendation').innerText = `Recommendation: ${rec}`;
+
+            // 4. Update the Chart
+            updateChart(data);
+        });
+
+        function updateChart(data) {
+            const ctx = document.getElementById('gradeChart').getContext('2d');
+            if (myChart) myChart.destroy();
+
+            myChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(data),
+                    datasets: [{
+                        label: 'Subject Performance',
+                        data: Object.values(data),
+                        backgroundColor: '#00d2ff',
+                        borderRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true, max: 100, grid: { color: '#222' } },
+                        x: { grid: { display: false } }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        // --- AI VOICE LOGIC ---
+        document.addEventListener('mouseup', () => {
+            const selectedText = window.getSelection().toString().trim();
+            if (selectedText.length > 2) {
+                window.speechSynthesis.cancel(); // Stop current speech
+                const speech = new SpeechSynthesisUtterance(selectedText);
+                speech.rate = 1.0;
+                window.speechSynthesis.speak(speech);
+            }
+        });
+    </script>
+</body>
+</html>

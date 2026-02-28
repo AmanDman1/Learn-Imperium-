@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Omni-Engine v10.3 | Smart Parser</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Plus+Jakarta+Sans:wght@300;400;600&display=swap');
+        :root { --primary: #00e5ff; --accent: #ff4757; --bg: #050a10; --glass: rgba(255, 255, 255, 0.05); }
+        body { margin: 0; background: var(--bg); color: white; font-family: 'Plus Jakarta Sans', sans-serif; display: flex; flex-direction: column; align-items: center; min-height: 100vh; padding: 20px; }
+        :focus { outline: 4px solid var(--primary) !important; background: rgba(0, 229, 255, 0.15) !important; }
+        .calc-wrap { width: 100%; max-width: 480px; background: var(--glass); backdrop-filter: blur(25px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 32px; padding: 25px; box-shadow: 0 25px 50px rgba(0,0,0,0.6); }
+        .display-box { background: rgba(0,0,0,0.6); padding: 25px; border-radius: 20px; text-align: right; margin-bottom: 20px; border-right: 4px solid var(--primary); }
+        #screen { font-size: 2.2rem; font-family: 'Orbitron'; color: var(--primary); min-height: 1.2em; word-break: break-all; }
+        .btn-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+        button { padding: 20px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); background: rgba(255,255,255,0.03); color: white; cursor: pointer; font-family: 'Orbitron'; transition: 0.2s; font-size: 0.8rem; }
+        button:hover { background: var(--primary); color: black; }
+        .listening-active { background: var(--accent) !important; color: white !important; animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0px var(--accent); } 50% { box-shadow: 0 0 20px var(--accent); } 100% { box-shadow: 0 0 0px var(--accent); } }
+        canvas { width: 100%; height: 0; background: #000; border-radius: 20px; margin-top: 15px; border: 1px solid rgba(0, 229, 255, 0.2); transition: height 0.4s ease; }
+        .full-graph canvas { height: 300px; display: block; }
+    </style>
+</head>
+<body tabindex="-1">
+
+<div class="calc-wrap" id="main-container">
+    <div style="display:flex; justify-content: space-between; margin-bottom: 15px; align-items: center;">
+        <span style="font-family:'Orbitron'; color:var(--primary); font-size:0.7rem;">OMNI-ENGINE v10.3</span>
+        <button id="voiceBtn" class="nav-item" onclick="toggleVoice()" style="width: 130px;">🎤 START MIC</button>
+    </div>
+
+    <div class="display-box">
+        <div id="screen">0</div>
+    </div>
+
+    <div class="btn-grid">
+        <button class="nav-item" onclick="clearAll()">AC</button>
+        <button class="nav-item" onclick="insert('Math.sqrt(')">√</button>
+        <button class="nav-item" onclick="insert('**')">^</button>
+        <button class="nav-item" onclick="insert('/')">÷</button>
+        <button class="nav-item" onclick="insert('7')">7</button><button class="nav-item" onclick="insert('8')">8</button><button class="nav-item" onclick="insert('9')">9</button>
+        <button class="nav-item" onclick="insert('*')">×</button>
+        <button class="nav-item" onclick="insert('4')">4</button><button class="nav-item" onclick="insert('5')">5</button><button class="nav-item" onclick="insert('6')">6</button>
+        <button class="nav-item" onclick="insert('-')">−</button>
+        <button class="nav-item" onclick="insert('1')">1</button><button class="nav-item" onclick="insert('2')">2</button><button class="nav-item" onclick="insert('3')">3</button>
+        <button class="nav-item" onclick="insert('+')">+</button>
+        <button class="nav-item" style="color: var(--primary)" onclick="insert('x')">x</button>
+        <button class="nav-item" onclick="insert('0')">0</button>
+        <button class="nav-item" onclick="insert('.')">.</button>
+        <button class="nav-item" onclick="backspace()">⌫</button>
+        <button id="calcBtn" class="nav-item" style="grid-column: span 4; background:var(--primary); color:black;" onclick="calculate()">CALCULATE / PLOT</button>
+    </div>
+
+    <canvas id="graphCanvas"></canvas>
+    <button id="exit-btn" class="nav-item" onclick="exitFull()" style="display:none; width:100%; margin-top:10px; background:var(--accent); border:none; padding:15px; border-radius:10px; font-family:Orbitron;">EXIT GRAPH</button>
+</div>
+
+<script>
+    let expression = "";
+    let isListening = false;
+    let recognition;
+    const screen = document.getElementById("screen");
+    const voiceBtn = document.getElementById("voiceBtn");
+    const synth = window.speechSynthesis;
+
+    function speak(text) {
+        synth.cancel();
+        const msg = new SpeechSynthesisUtterance(text);
+        msg.rate = 1.2;
+        synth.speak(msg);
+    }
+
+    // --- ARROW NAVIGATION ---
+    window.addEventListener('keydown', (e) => {
+        const items = Array.from(document.querySelectorAll('.nav-item')).filter(i => i.offsetParent !== null);
+        let currentIndex = items.indexOf(document.activeElement);
+        if (["ArrowRight", "ArrowDown"].includes(e.key)) {
+            e.preventDefault();
+            let next = (currentIndex + 1) % items.length;
+            items[next].focus();
+            speak(items[next].innerText);
+        } else if (["ArrowLeft", "ArrowUp"].includes(e.key)) {
+            e.preventDefault();
+            let prev = (currentIndex - 1 + items.length) % items.length;
+            items[prev].focus();
+            speak(items[prev].innerText);
+        }
+    });
+
+    // --- VOICE RECOGNITION ---
+    if ('webkitSpeechRecognition' in window) {
+        recognition = new webkitSpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = 'en-US';
+
+        recognition.onresult = (event) => {
+            let finalStr = "";
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                finalStr += event.results[i][0].transcript;
+            }
+            parseVoice(finalStr);
+        };
+    }
+
+    function toggleVoice() {
+        if (!isListening) {
+            expression = "";
+            recognition.start();
+            isListening = true;
+            voiceBtn.innerText = "STOP & SOLVE";
+            voiceBtn.classList.add('listening-active');
+            speak("Voice active. Speak your math.");
+        } else {
+            recognition.stop();
+            isListening = false;
+            voiceBtn.innerText = "🎤 START MIC";
+            voiceBtn.classList.remove('listening-active');
+            setTimeout(calculate, 500); // Small delay to let final result process
+        }
+    }
+
+    function parseVoice(text) {
+        let input = text.toLowerCase();
+        
+        // 1. Handle Voice Commands
+        if (input.includes("calculate") || input.includes("solve") || input.includes("plot") || input.includes("go")) {
+            toggleVoice(); return;
+        }
+        if (input.includes("clear") || input.includes("reset")) {
+            clearAll(); return;
+        }
+
+        // 2. Comprehensive Math Mapping
+        const map = {
+            "plus": "+", "add": "+",
+            "minus": "-", "subtract": "-", "take away": "-",
+            "times": "*", "multiplied by": "*", "into": "*",
+            "divided by": "/", "over": "/",
+            "point": ".", "decimal": ".",
+            "zero": "0", "one": "1", "two": "2", "three": "3", "four": "4", "five": "5", "six": "6", "seven": "7", "eight": "8", "nine": "9",
+            "squared": "**2", "to the power of 2": "**2",
+            "cubed": "**3", "to the power of 3": "**3",
+            "square root": "Math.sqrt(", "root": "Math.sqrt(",
+            "bracket": "(", "open": "(", "close": ")",
+            "variable": "x", "letter x": "x"
+        };
+
+        // Replace phrases with symbols
+        Object.keys(map).forEach(key => {
+            let reg = new RegExp(key, "g");
+            input = input.replace(reg, map[key]);
+        });
+
+        // 3. Final Clean: Remove all letters EXCEPT 'x' and 'Math.sqrt'
+        // We preserve 'Math.sqrt(' specifically
+        expression = input.replace(/[^0-9+\-*/.**()xMath.sqrt(]/g, "");
+        
+        // Remove 'math' and 'sqrt' leftovers if they weren't part of the function
+        expression = expression.replace(/math/g, "Math").replace(/sqrt/g, "sqrt");
+
+        updateDisplay();
+    }
+
+    function insert(val) { expression += val; updateDisplay(); speak(val); }
+    function updateDisplay() { screen.innerText = expression.replace(/Math\.sqrt\(/g, '√').replace(/\*\*/g, '^') || "0"; }
+    function clearAll() { expression = ""; updateDisplay(); exitFull(); speak("Cleared"); }
+    function backspace() { expression = expression.slice(0, -1); updateDisplay(); }
+
+    function calculate() {
+        if (!expression) return;
+        if (expression.includes('x')) {
+            speak("Plotting graph.");
+            plotGraph();
+        } else {
+            try {
+                // Auto-close brackets if user forgot
+                let openBrackets = (expression.match(/\(/g) || []).length;
+                let closeBrackets = (expression.match(/\)/g) || []).length;
+                while (openBrackets > closeBrackets) { expression += ")"; closeBrackets++; }
+
+                const result = eval(expression);
+                speak("The answer is " + result);
+                expression = result.toString();
+                updateDisplay();
+            } catch (e) { speak("Math error. Try saying it differently."); }
+        }
+    }
+
+    function plotGraph() {
+        const canvas = document.getElementById("graphCanvas");
+        document.getElementById('main-container').classList.add('full-graph');
+        document.getElementById('exit-btn').style.display = 'block';
+        canvas.width = canvas.offsetWidth;
+        canvas.height = 300;
+        const ctx = canvas.getContext("2d"), w = canvas.width, h = canvas.height, scale = 30;
+        ctx.clearRect(0, 0, w, h);
+        ctx.strokeStyle = "#00e5ff"; ctx.beginPath(); ctx.moveTo(0, h/2); ctx.lineTo(w, h/2); ctx.moveTo(w/2, 0); ctx.lineTo(w/2, h); ctx.stroke();
+        ctx.strokeStyle = "white"; ctx.lineWidth = 3; ctx.beginPath();
+        for (let i = 0; i < w; i++) {
+            let x = (i - w/2) / scale;
+            try {
+                let y = eval(expression.replace(/x/g, `(${x})`));
+                let py = h/2 - (y * scale);
+                if (i === 0) ctx.moveTo(i, py); else ctx.lineTo(i, py);
+            } catch(e) {}
+        }
+        ctx.stroke();
+    }
+
+    function exitFull() { 
+        document.getElementById('main-container').classList.remove('full-graph'); 
+        document.getElementById('exit-btn').style.display = 'none'; 
+    }
+</script>
+</body>
+</html>

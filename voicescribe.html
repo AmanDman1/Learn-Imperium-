@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Voice | AI Scribe & Player</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron&family=Plus+Jakarta+Sans:wght@300;400;600&display=swap');
+        :root { --primary: #00e5ff; --bg: #050a10; --card: #111a24; --red: #ff4757; }
+        body { background: var(--bg); color: white; font-family: 'Plus Jakarta Sans', sans-serif; padding: 20px; text-align: center; }
+        .container { max-width: 850px; margin: 0 auto; outline: none; }
+        h1 { font-family: 'Orbitron'; letter-spacing: 4px; }
+        h1 span { color: var(--primary); }
+        
+        .nav-item:focus {
+            outline: 3px solid var(--primary) !important;
+            outline-offset: 4px;
+            background: rgba(0, 229, 255, 0.1) !important;
+            box-shadow: 0 0 15px var(--primary);
+        }
+
+        #output {
+            width: 100%; min-height: 250px; background: var(--card); border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px; padding: 25px; margin: 20px 0; text-align: left; font-size: 1.1rem;
+            line-height: 1.6; color: #e0e0e0; overflow-y: auto; box-sizing: border-box;
+        }
+
+        .player-section { background: rgba(0, 229, 255, 0.05); padding: 15px; border-radius: 12px; margin-bottom: 20px; display: none; border: 1px solid var(--primary); }
+        audio { width: 100%; filter: invert(100%) hue-rotate(180deg) brightness(1.5); }
+
+        .upload-zone { border: 2px dashed rgba(255, 255, 255, 0.2); padding: 20px; border-radius: 12px; margin: 20px 0; }
+        .controls { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+        .btn { padding: 12px 25px; border-radius: 8px; border: none; font-family: 'Orbitron'; font-weight: bold; cursor: pointer; transition: 0.3s; font-size: 0.75rem; color: black; }
+        .btn-rec { background: white; }
+        .btn-rec.active { background: var(--red); color: white; box-shadow: 0 0 15px var(--red); }
+        .btn-util { background: var(--primary); }
+        .btn-util:disabled { opacity: 0.2; cursor: not-allowed; }
+        
+        input[type="file"] { display: none; }
+        .file-label { cursor: pointer; color: var(--primary); text-decoration: underline; font-family: 'Orbitron'; font-size: 0.8rem; display: block; padding: 10px; }
+    </style>
+</head>
+<body tabindex="-1">
+    <div class="container">
+        <h1>YOUR<span>VOICE</span></h1>
+
+        <div id="playerContainer" class="player-section">
+            <p style="font-size: 0.7rem; font-family: Orbitron; margin-bottom: 5px;">VOICE VAULT</p>
+            <audio id="audioPlayer" class="nav-item" controls aria-label="Audio Player"></audio>
+        </div>
+
+        <div id="output" contenteditable="true" class="nav-item" aria-label="Transcription Box"></div>
+
+        <div class="controls">
+            <button id="recBtn" class="btn btn-rec nav-item" onclick="toggle()" aria-label="Start Recording">START RECORDING</button>
+            <button id="copyBtn" class="btn btn-util nav-item" onclick="copy()" aria-label="Copy Text">COPY TEXT</button>
+            <button id="dlBtn" class="btn btn-util nav-item" onclick="download()" disabled aria-label="Download Audio">DOWNLOAD AUDIO</button>
+        </div>
+
+        <hr style="margin: 40px 0; border: 0; border-top: 1px solid rgba(255,255,255,0.1);">
+
+        <div class="upload-zone">
+            <label class="file-label nav-item" tabindex="0" aria-label="Select Audio File">
+                [ SELECT AUDIO FILE ]
+                <input type="file" id="audioUpload" accept="audio/*" onchange="handleUpload(event)">
+            </label>
+        </div>
+
+        <br>
+        <a href="index.html" class="nav-item" style="color:var(--primary); text-decoration:none; font-family:Orbitron; font-size:0.8rem;" aria-label="Back to dashboard">← BACK TO DASHBOARD</a>
+    </div>
+
+    <script>
+        let rec, media, chunks = [], active = false;
+        let navIndex = 0; // Start at the box
+        const synth = window.speechSynthesis;
+        const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+        function speak(txt) {
+            const u = new SpeechSynthesisUtterance(txt);
+            u.rate = 1.6; synth.cancel(); synth.speak(u);
+        }
+
+        // --- THE FIX: GLOBAL KEYBOARD LISTENER ---
+        document.addEventListener('keydown', (e) => {
+            const items = Array.from(document.querySelectorAll('.nav-item')).filter(el => el.offsetParent !== null);
+            
+            // If user is in output, only let arrows escape if they aren't holding shift (to allow text selection)
+            if (document.activeElement.id === 'output' && !e.ctrlKey && !e.altKey) {
+                if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                    // Logic: If user presses Down at the end of text or Up at start, escape.
+                    // For simplicity in this suite, we let Down/Up always escape the box to keep navigation fast.
+                    document.activeElement.blur(); 
+                } else {
+                    return; // Let them type
+                }
+            }
+
+            if (["ArrowRight", "ArrowDown"].includes(e.key)) {
+                e.preventDefault();
+                navIndex = (navIndex + 1) % items.length;
+                items[navIndex].focus();
+                speak(items[navIndex].getAttribute('aria-label') || "Link");
+            } 
+            else if (["ArrowLeft", "ArrowUp"].includes(e.key)) {
+                e.preventDefault();
+                navIndex = (navIndex - 1 + items.length) % items.length;
+                items[navIndex].focus();
+                speak(items[navIndex].getAttribute('aria-label') || "Link");
+            }
+            else if (e.key === " " || e.key === "Enter") {
+                if (document.activeElement.id === 'output') return; 
+                e.preventDefault();
+                if (document.activeElement.tagName === 'LABEL') {
+                    document.getElementById('audioUpload').click();
+                } else {
+                    document.activeElement.click();
+                }
+            }
+        });
+
+        // Speech Engine
+        if (Speech) {
+            rec = new Speech();
+            rec.continuous = true;
+            rec.interimResults = true;
+            rec.onresult = (e) => {
+                let text = '';
+                for (let i = e.resultIndex; i < e.results.length; i++) {
+                    if (e.results[i].isFinal) text += e.results[i][0].transcript;
+                }
+                document.getElementById('output').innerText += text + " ";
+            };
+        }
+
+        async function toggle() {
+            const btn = document.getElementById('recBtn');
+            if (!active) {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    media = new MediaRecorder(stream);
+                    chunks = [];
+                    media.ondataavailable = (e) => chunks.push(e.data);
+                    media.onstop = () => {
+                        const blob = new Blob(chunks, { type: 'audio/wav' });
+                        document.getElementById('audioPlayer').src = URL.createObjectURL(blob);
+                        document.getElementById('playerContainer').style.display = 'block';
+                        document.getElementById('dlBtn').disabled = false;
+                    };
+                    media.start(); rec.start();
+                    active = true; btn.innerText = "STOP RECORDING"; btn.classList.add('active');
+                    speak("Mic active.");
+                } catch(e) { speak("Mic access denied."); }
+            } else {
+                media.stop(); rec.stop();
+                active = false; btn.innerText = "START RECORDING"; btn.classList.remove('active');
+                speak("Recording finished.");
+            }
+        }
+
+        function copy() {
+            navigator.clipboard.writeText(document.getElementById('output').innerText);
+            speak("Text copied.");
+        }
+
+        function download() {
+            const blob = new Blob(chunks, { type: 'audio/wav' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `voice-note.wav`;
+            a.click();
+        }
+
+        function handleUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            document.getElementById('audioPlayer').src = URL.createObjectURL(file);
+            document.getElementById('playerContainer').style.display = 'block';
+            speak("Audio loaded.");
+        }
+
+        window.onload = () => {
+            document.getElementById('output').focus();
+            navIndex = Array.from(document.querySelectorAll('.nav-item')).indexOf(document.getElementById('output'));
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Matrix Core | Logic Fixed</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Plus+Jakarta+Sans:wght@300;400;600&display=swap');
+        :root { --neon: #00e5ff; --bg: #050a10; --glass: rgba(255, 255, 255, 0.05); --border: rgba(255, 255, 255, 0.1); --gold: #ffd700; --red: #ff4757; }
+        body { background-color: var(--bg); color: white; font-family: 'Plus Jakarta Sans', sans-serif; margin: 0; padding: 20px; }
+        .container { max-width: 1100px; margin: 0 auto; }
+        header h1 { font-family: 'Orbitron'; text-align: center; letter-spacing: 5px; margin-bottom: 20px; }
+        header h1 span { color: var(--neon); }
+        .nav-item:focus { outline: 3px solid var(--neon); outline-offset: 3px; background: rgba(0, 229, 255, 0.1) !important; }
+        .mode-switcher { display: flex; justify-content: center; gap: 10px; margin-bottom: 30px; }
+        .m-btn { background: var(--glass); border: 1px solid var(--border); color: white; padding: 10px 25px; border-radius: 8px; cursor: pointer; font-family: 'Orbitron'; transition: 0.3s; }
+        .m-btn.active { background: var(--neon); color: #000; font-weight: bold; }
+        .grid-ctrl { text-align: center; margin-bottom: 30px; background: var(--glass); padding: 15px; border-radius: 12px; }
+        .grid-ctrl button { width: auto; display: inline-block; margin: 0 5px; padding: 8px 20px; color: white; background: var(--glass); border: 1px solid var(--border); cursor: pointer; font-family: 'Orbitron'; }
+        .calculator-layout { display: grid; grid-template-columns: 1fr 200px 1fr; gap: 20px; align-items: start; }
+        .matrix-box { background: var(--glass); padding: 20px; border-radius: 15px; border: 1px solid var(--border); }
+        .matrix-grid { display: grid; gap: 10px; margin-top: 15px; }
+        .matrix-grid input { width: 100%; height: 45px; background: #000; border: 1px solid #333; color: white; text-align: center; font-family: 'Orbitron'; border-radius: 6px; }
+        .ops-panel { display: flex; flex-direction: column; gap: 10px; }
+        .op-section-label { font-size: 0.6rem; font-family: 'Orbitron'; color: var(--gold); text-align: center; margin-bottom: 5px; }
+        .ops-panel button { background: var(--glass); border: 1px solid var(--border); color: white; padding: 12px; border-radius: 8px; cursor: pointer; font-family: 'Orbitron'; font-size: 0.7rem; }
+        .btn-loop { background: rgba(255, 215, 0, 0.1) !important; border: 1px dashed var(--gold) !important; color: var(--gold) !important; }
+        .res-area { margin-top: 40px; display: none; grid-template-columns: 1fr 1.2fr; gap: 30px; }
+        .ans-card { background: rgba(0, 229, 255, 0.05); border: 1px solid var(--neon); border-radius: 15px; padding: 25px; }
+        .tutor-card { background: #000; border-left: 4px solid var(--gold); padding: 25px; border-radius: 15px; }
+        .ans-matrix { display: grid; gap: 10px; margin-top: 20px; }
+        .ans-cell { height: 45px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.05); color: var(--neon); font-family: 'Orbitron'; border-radius: 6px; }
+        .step-txt { color: #ccc; font-size: 0.9rem; margin-bottom: 10px; border-bottom: 1px solid #222; padding-bottom: 5px; }
+        .blurred { opacity: 0.1; pointer-events: none; filter: blur(4px); }
+        .hidden { display: none; }
+    </style>
+</head>
+<body tabindex="-1">
+
+<div class="container">
+    <header><h1>MATRIX<span>CORE</span></h1></header>
+
+    <div class="mode-switcher">
+        <button id="btnS" class="m-btn active nav-item" onclick="setMode('single')" aria-label="Single Mode">SINGLE (A)</button>
+        <button id="btnD" class="m-btn nav-item" onclick="setMode('dual')" aria-label="Dual Mode">DUAL (A & B)</button>
+    </div>
+
+    <div class="grid-ctrl">
+        <button class="nav-item" onclick="resize(2)" aria-label="2 by 2">2 x 2</button>
+        <button class="nav-item" onclick="resize(3)" aria-label="3 by 3">3 x 3</button>
+    </div>
+
+    <main class="calculator-layout">
+        <div class="matrix-box">
+            <h3 style="color:var(--neon); text-align:center; font-family:Orbitron;">MATRIX A</h3>
+            <div id="grid-a" class="matrix-grid"></div>
+        </div>
+
+        <div class="ops-panel">
+            <div id="single-ops">
+                <div class="op-section-label">ANALYSIS</div>
+                <button class="nav-item" onclick="solve('det')" aria-label="Determinant">DETERMINANT</button>
+                <button class="nav-item" onclick="solve('trans')" aria-label="Transpose">TRANSPOSE</button>
+                <button class="nav-item" onclick="solve('trace')" aria-label="Trace">TRACE</button>
+                <button class="nav-item" onclick="solve('adj')" aria-label="Adjoint">ADJOINT</button>
+                <button class="nav-item" onclick="solve('inv')" aria-label="Inverse">INVERSE</button>
+                <button class="nav-item btn-loop" onclick="resetNav()" aria-label="Loop back to top">LOOP</button>
+            </div>
+            <div id="dual-ops" class="hidden">
+                <div class="op-section-label">INTERACTION</div>
+                <button class="nav-item" onclick="solve('add')" aria-label="Add A and B">A + B</button>
+                <button class="nav-item" onclick="solve('sub')" aria-label="Subtract B from A">A - B</button>
+                <button class="nav-item" onclick="solve('mul')" aria-label="Multiply A and B">A × B</button>
+            </div>
+        </div>
+
+        <div id="box-b" class="matrix-box blurred">
+            <h3 style="color:var(--neon); text-align:center; font-family:Orbitron;">MATRIX B</h3>
+            <div id="grid-b" class="matrix-grid"></div>
+        </div>
+    </main>
+
+    <section id="resultDisplay" class="res-area">
+        <div class="ans-card">
+            <h3 id="resTitle" style="font-family:Orbitron; color:var(--neon);">RESULT</h3>
+            <div id="ans-matrix" class="ans-matrix"></div>
+            <div id="val-box" style="font-size:2.5rem; color:var(--neon); font-family:Orbitron; text-align:center; margin-top:10px;"></div>
+        </div>
+        <div class="tutor-card">
+            <h3 style="font-family:Orbitron; color:var(--gold);">AI TUTOR</h3>
+            <div id="tutor-steps" style="margin-top:15px;"></div>
+            <button class="nav-item" onclick="document.getElementById('resultDisplay').style.display='none'" style="margin-top:15px; background:var(--neon); color:black;" aria-label="Close Report">CLOSE</button>
+        </div>
+    </section>
+</div>
+
+<script>
+    let dim = 2;
+    let mode = 'single';
+    let navIndex = -1;
+    const synth = window.speechSynthesis;
+
+    function speak(txt) {
+        const u = new SpeechSynthesisUtterance(txt);
+        u.rate = 1.4; synth.cancel(); synth.speak(u);
+    }
+
+    // --- NAVIGATION LOGIC ---
+    function resetNav() {
+        navIndex = -1;
+        const items = document.querySelectorAll('.nav-item:not(.hidden):not(.blurred .nav-item)');
+        items[0].focus();
+        speak("Looped back to top.");
+    }
+
+    window.addEventListener('keydown', (e) => {
+        // Only select items that are visible and NOT inside a blurred (Matrix B) container
+        const items = Array.from(document.querySelectorAll('.nav-item')).filter(el => {
+            const isHidden = el.offsetParent === null || el.closest('.hidden');
+            const isBlurred = el.closest('.blurred');
+            return !isHidden && !isBlurred;
+        });
+
+        if (["ArrowRight", "ArrowDown"].includes(e.key)) {
+            e.preventDefault(); navIndex = (navIndex + 1) % items.length;
+            items[navIndex].focus(); speak(items[navIndex].getAttribute('aria-label'));
+        } else if (["ArrowLeft", "ArrowUp"].includes(e.key)) {
+            e.preventDefault(); navIndex = (navIndex - 1 + items.length) % items.length;
+            items[navIndex].focus(); speak(items[navIndex].getAttribute('aria-label'));
+        } else if (e.key === "Enter" || e.key === " ") {
+            if (document.activeElement.tagName !== "INPUT" && navIndex !== -1) {
+                e.preventDefault(); items[navIndex].click();
+            }
+        }
+    });
+
+    // --- MATH ENGINE ---
+    function getDet(m) {
+        if (m.length === 2) return (m[0][0] * m[1][1]) - (m[0][1] * m[1][0]);
+        return m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) -
+               m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) +
+               m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]);
+    }
+
+    function getAdjoint(m) {
+        if (m.length === 2) return [[m[1][1], -m[0][1]], [-m[1][0], m[0][0]]];
+        let adj = [];
+        for (let i = 0; i < 3; i++) {
+            let row = [];
+            for (let j = 0; j < 3; j++) {
+                let minor = [];
+                for (let r = 0; r < 3; r++) {
+                    if (r === i) continue;
+                    let minorRow = [];
+                    for (let c = 0; c < 3; c++) {
+                        if (c === j) continue;
+                        minorRow.push(m[r][c]);
+                    }
+                    minor.push(minorRow);
+                }
+                let cofactor = ((i + j) % 2 === 0 ? 1 : -1) * getDet(minor);
+                row.push(cofactor);
+            }
+            adj.push(row);
+        }
+        return adj[0].map((_, colIndex) => adj.map(row => row[colIndex])); 
+    }
+
+    function solve(op) {
+        const A = getM('grid-a');
+        const B = getM('grid-b');
+        let res = null; let steps = []; let v = null;
+        document.getElementById('ans-matrix').style.display = 'grid';
+        document.getElementById('val-box').innerText = '';
+
+        if (op === 'trace') {
+            v = A.reduce((sum, row, i) => sum + row[i], 0);
+            steps = ["My advice for the Trace is to sum the diagonal.", `Sum: ${v}`];
+            document.getElementById('ans-matrix').style.display = 'none';
+            document.getElementById('val-box').innerText = v;
+        } else if (op === 'adj') {
+            res = getAdjoint(A);
+            steps = ["My advice for the Adjoint is to transpose the cofactor matrix."];
+        } else if (op === 'det') {
+            v = getDet(A);
+            steps = ["My advice for the Determinant is simple cross-math.", `Result: ${v}`];
+            document.getElementById('ans-matrix').style.display = 'none';
+            document.getElementById('val-box').innerText = v;
+        } else if (op === 'inv') {
+            let det = getDet(A);
+            if (det === 0) {
+                steps = ["The inverse is impossible because the determinant is zero."];
+                document.getElementById('ans-matrix').style.display = 'none';
+                document.getElementById('val-box').innerText = "N/A";
+            } else {
+                let adj = getAdjoint(A);
+                res = adj.map(row => row.map(val => Number((val / det).toFixed(2))));
+                steps = ["Inverse = Adjoint divided by Determinant."];
+            }
+        } else if (op === 'trans') {
+            res = A[0].map((_, i) => A.map(row => row[i]));
+            steps = ["Rows become columns in a Transpose."];
+        } else if (op === 'add') {
+            res = A.map((r,i) => r.map((val,j) => val + B[i][j]));
+            steps = ["Adding matching cells together."];
+        } else if (op === 'sub') {
+            res = A.map((r,i) => r.map((val,j) => val - B[i][j]));
+            steps = ["Subtracting matching cells."];
+        } else if (op === 'mul') {
+            res = Array(dim).fill().map(() => Array(dim).fill(0));
+            for(let i=0; i<dim; i++) for(let j=0; j<dim; j++) for(let k=0; k<dim; k++) res[i][j] += A[i][k] * B[k][j];
+            steps = ["Multiplying rows by columns."];
+        }
+        render(res, steps, op);
+    }
+
+    function render(m, s, op) {
+        document.getElementById('resultDisplay').style.display = 'grid';
+        const grid = document.getElementById('ans-matrix');
+        if (m) {
+            grid.style.gridTemplateColumns = `repeat(${m[0].length}, 1fr)`;
+            grid.innerHTML = m.flat().map(val => `<div class="ans-cell">${val}</div>`).join('');
+        }
+        document.getElementById('tutor-steps').innerHTML = s.map(st => `<div class="step-txt">${st}</div>`).join('');
+        speak(`Calculating ${op}. ` + s.join(' '));
+    }
+
+    function setMode(m) {
+        mode = m;
+        document.getElementById('btnS').classList.toggle('active', m==='single');
+        document.getElementById('btnD').classList.toggle('active', m==='dual');
+        document.getElementById('box-b').classList.toggle('blurred', m==='single');
+        document.getElementById('dual-ops').classList.toggle('hidden', m==='single');
+        resize(dim);
+    }
+
+    function resize(n) {
+        dim = n;
+        makeGrid('grid-a', 'Matrix A');
+        makeGrid('grid-b', 'Matrix B');
+        navIndex = -1; // Reset navigation on resize
+    }
+
+    function makeGrid(id, name) {
+        const c = document.getElementById(id);
+        c.style.gridTemplateColumns = `repeat(${dim}, 1fr)`;
+        c.innerHTML = '';
+        for (let i = 0; i < dim*dim; i++) {
+            const inp = document.createElement('input');
+            inp.type = 'number'; inp.value = 0; inp.className = "nav-item";
+            inp.setAttribute('aria-label', `${name} cell`);
+            
+            // AUTO-CLEAR ZERO LOGIC
+            inp.onfocus = () => {
+                if (inp.value === "0") inp.value = "";
+                speak(inp.getAttribute('aria-label'));
+            };
+            inp.onblur = () => {
+                if (inp.value === "") inp.value = "0";
+            };
+            
+            c.appendChild(inp);
+        }
+    }
+
+    function getM(id) {
+        const inps = document.getElementById(id).getElementsByTagName('input');
+        let m = [];
+        for (let i = 0; i < dim; i++) {
+            let r = [];
+            for (let j = 0; j < dim; j++) r.push(Number(inps[i*dim+j].value));
+            m.push(r);
+        }
+        return m;
+    }
+
+    window.onload = () => { resize(2); setMode('single'); };
+</script>
+</body>
+</html>

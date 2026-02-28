@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Omni-Read v4.3 | Master Integrated Reader</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;400;600&display=swap');
+        :root { --primary: #00e5ff; --bg: #050a10; --glass: rgba(255, 255, 255, 0.07); --accent: #ff4757; --start: #2ecc71; }
+        
+        body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; margin: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        
+        /* High-visibility focus for arrow navigation */
+        :focus {
+            outline: 4px solid var(--primary) !important;
+            outline-offset: 4px;
+            box-shadow: 0 0 25px var(--primary);
+            background: rgba(0, 229, 255, 0.2) !important;
+        }
+
+        .top-bar { height: 75px; background: rgba(0,0,0,0.9); display: flex; align-items: center; padding: 0 25px; border-bottom: 1px solid var(--primary); gap: 20px; z-index: 10; }
+        .main-content { display: flex; flex: 1; overflow: hidden; }
+        
+        .viewer-side { flex: 1.2; border-right: 1px solid rgba(255,255,255,0.1); overflow-y: auto; background: #0c1218; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        #pdf-canvas { max-width: 100%; border-radius: 8px; box-shadow: 0 0 40px rgba(0,0,0,0.8); }
+        
+        .read-side { flex: 0.8; background: rgba(0,0,0,0.3); display: flex; flex-direction: column; padding: 20px; }
+        #transcript { flex: 1; background: rgba(255,255,255,0.03); border-radius: 15px; padding: 25px; overflow-y: auto; font-size: 1.15rem; line-height: 1.9; border: 1px solid rgba(255,255,255,0.05); }
+        
+        .word-span { cursor: pointer; transition: 0.2s; border-radius: 3px; padding: 0 2px; }
+        .highlight { background: var(--primary) !important; color: black !important; font-weight: bold; border-radius: 4px; }
+        
+        .controls { display: flex; gap: 12px; align-items: center; }
+        .nav-tools { display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.1); padding: 5px 15px; border-radius: 10px; }
+        
+        button { background: var(--primary); border: none; padding: 10px 18px; border-radius: 8px; font-weight: bold; cursor: pointer; font-family: 'Orbitron'; font-size: 0.75rem; transition: 0.3s; color: black; }
+        button:disabled { opacity: 0.3; cursor: not-allowed; }
+        input[type="range"] { accent-color: var(--primary); }
+        .info-txt { font-size: 0.7rem; color: var(--primary); opacity: 0.8; margin-top: 5px; }
+    </style>
+</head>
+<body tabindex="-1">
+
+<div class="top-bar">
+    <span style="font-family:'Orbitron'; color: var(--primary); font-size: 0.9rem;">OMNI-READ V4.3</span>
+    
+    <div class="controls">
+        <input type="file" id="upload" accept=".pdf, .png, .jpg" class="nav-item" aria-label="Upload document">
+        
+        <div class="nav-tools">
+            <button id="prev-pg" onclick="changePage(-1)" class="nav-item" aria-label="Previous Page">PREV</button>
+            <span id="page-num" style="font-family: 'Orbitron'; font-size: 0.8rem;">PAGE: 0/0</span>
+            <button id="next-pg" onclick="changePage(1)" class="nav-item" aria-label="Next Page">NEXT</button>
+        </div>
+
+        <label style="font-size: 0.8rem;">SPEED:</label>
+        <input type="range" id="speed" min="0.5" max="2" step="0.1" value="1.0" style="width: 80px;" class="nav-item" aria-label="Reading Speed">
+        
+        <button id="start-btn" onclick="resumeAtWord()" style="background:var(--start); color:white;" class="nav-item" aria-label="Start Reading">START</button>
+        <button id="stop-btn" onclick="window.speechSynthesis.cancel()" style="background:var(--accent); color:white;" class="nav-item" aria-label="Stop Reading">STOP</button>
+    </div>
+</div>
+
+<div class="main-content">
+    <div class="viewer-side"><canvas id="pdf-canvas"></canvas></div>
+    <div class="read-side">
+        <div id="transcript">Upload a document to begin.</div>
+        <div class="info-txt" id="status-info">IDLE</div>
+    </div>
+</div>
+
+<script>
+    const transcriptDiv = document.getElementById('transcript');
+    const canvas = document.getElementById('pdf-canvas');
+    const ctx = canvas.getContext('2d');
+    
+    let pdfDoc = null, pageNum = 1, wordsArray = [], currentWordIndex = 0;
+    let synth = window.speechSynthesis, currentNavIndex = -1;
+
+    // --- 1. KEYBOARD & SEQUENTIAL NAVIGATION ---
+    function speakUI(text) {
+        const feedback = new SpeechSynthesisUtterance(text);
+        feedback.rate = 1.6;
+        synth.cancel(); 
+        synth.speak(feedback);
+    }
+
+    window.addEventListener('keydown', (e) => {
+        const navItems = document.querySelectorAll('.nav-item');
+        const speedInput = document.getElementById('speed');
+
+        if (e.key === "ArrowRight") {
+            e.preventDefault();
+            currentNavIndex = (currentNavIndex + 1) % navItems.length;
+            navItems[currentNavIndex].focus();
+            speakUI(navItems[currentNavIndex].getAttribute('aria-label'));
+        } 
+        else if (e.key === "ArrowLeft") {
+            e.preventDefault();
+            currentNavIndex = (currentNavIndex - 1 + navItems.length) % navItems.length;
+            navItems[currentNavIndex].focus();
+            speakUI(navItems[currentNavIndex].getAttribute('aria-label'));
+        }
+        else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            let newS = Math.min(parseFloat(speedInput.value) + 0.1, 2.0);
+            speedInput.value = newS.toFixed(1);
+            speakUI("Speed " + speedInput.value);
+            if (synth.speaking) resumeAtWord();
+        }
+        else if (e.key === "ArrowDown") {
+            e.preventDefault();
+            let newS = Math.max(parseFloat(speedInput.value) - 0.1, 0.5);
+            speedInput.value = newS.toFixed(1);
+            speakUI("Speed " + speedInput.value);
+            if (synth.speaking) resumeAtWord();
+        }
+        else if (e.key === "Enter" || e.key === " ") {
+            if (currentNavIndex !== -1) {
+                e.preventDefault();
+                navItems[currentNavIndex].click();
+            }
+        }
+    });
+
+    // --- 2. READING LOGIC ---
+    function resumeAtWord() {
+        jumpToWord(currentWordIndex);
+    }
+
+    function jumpToWord(index) {
+        synth.cancel();
+        currentWordIndex = index;
+        
+        const textToRead = wordsArray.slice(index).join(" ");
+        const adaptedText = textToRead
+            .replace(/\^2/g, " squared").replace(/\^3/g, " cubed")
+            .replace(/\//g, " divided by ").replace(/=/g, " equals ");
+
+        const utterance = new SpeechSynthesisUtterance(adaptedText);
+        utterance.rate = document.getElementById('speed').value;
+        
+        let highlightPointer = index;
+        utterance.onboundary = (event) => {
+            if (event.name === 'word') {
+                document.querySelectorAll('.highlight').forEach(el => el.classList.remove('highlight'));
+                const target = document.getElementById(`word-${highlightPointer}`);
+                if (target) {
+                    target.classList.add('highlight');
+                    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    currentWordIndex = highlightPointer;
+                    highlightPointer++;
+                }
+            }
+        };
+        utterance.onstart = () => document.getElementById('status-info').innerText = "READING...";
+        utterance.onend = () => document.getElementById('status-info').innerText = "FINISHED";
+        synth.speak(utterance);
+    }
+
+    // --- 3. DOCUMENT HANDLING ---
+    document.getElementById('upload').addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        if (file.type === "application/pdf") {
+            const reader = new FileReader();
+            reader.onload = async function() {
+                pdfDoc = await pdfjsLib.getDocument(new Uint8Array(this.result)).promise;
+                renderPage(1);
+                speakUI("PDF loaded. Page 1.");
+            };
+            reader.readAsArrayBuffer(file);
+        } else {
+            speakUI("Processing image...");
+            Tesseract.recognize(file, 'eng').then(({ data: { text } }) => {
+                prepareTranscript(text);
+                const img = new Image();
+                img.onload = () => ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                img.src = URL.createObjectURL(file);
+                speakUI("Image ready.");
+            });
+        }
+    });
+
+    async function renderPage(num) {
+        if (!pdfDoc) return;
+        pageNum = num;
+        const page = await pdfDoc.getPage(num);
+        const viewport = page.getViewport({ scale: 1.5 });
+        canvas.width = viewport.width; canvas.height = viewport.height;
+        await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+        const textContent = await page.getTextContent();
+        prepareTranscript(textContent.items.map(s => s.str).join(" "));
+        document.getElementById('page-num').innerText = `PAGE: ${num}/${pdfDoc.numPages}`;
+        document.getElementById('prev-pg').disabled = (num <= 1);
+        document.getElementById('next-pg').disabled = (num >= pdfDoc.numPages);
+    }
+
+    function changePage(delta) {
+        synth.cancel();
+        renderPage(pageNum + delta);
+        speakUI("Page " + (pageNum));
+    }
+
+    function prepareTranscript(text) {
+        wordsArray = text.split(/\s+/).filter(w => w.length > 0);
+        transcriptDiv.innerHTML = wordsArray.map((word, i) => 
+            `<span class="word-span" id="word-${i}" onclick="jumpToWord(${i})">${word}</span>`
+        ).join(" ");
+        currentWordIndex = 0; // Reset for new page
+    }
+</script>
+</body>
+</html>

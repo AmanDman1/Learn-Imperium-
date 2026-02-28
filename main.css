@@ -1,0 +1,179 @@
+:root {
+    /* Dark Theme Variables */
+    --bg: #0a0b10;
+    --card-surface: #12141d;
+    --text-primary: #ffffff;
+    --text-secondary: #94a3b8;
+    --accent: #00f2ff;
+    --btn-bg: #00f2ff;
+}
+
+[data-theme="light"] {
+    /* Light Theme Variables */
+    --bg: #f8fafc;
+    --card-surface: #ffffff;
+    --text-primary: #1e293b;
+    --text-secondary: #64748b;
+    --accent: #0ea5e9;
+    --btn-bg: #1e293b;
+}
+
+body {
+    background-color: var(--bg);
+    margin: 0;
+    padding: 80px 20px;
+    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transition: all 0.4s ease;
+}
+
+/* Header ID Styling */
+#hum1 {
+    margin-bottom: 50px;
+    text-align: center;
+    font-size: 3rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    letter-spacing: -1px;
+    text-transform: uppercase;
+}
+
+/* Grid Container */
+.grid-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 30px;
+    width: 100%;
+    max-width: 1200px;
+}
+
+/* Advanced Glowing Card */
+.card {
+    position: relative;
+    height: 320px;
+    background-color: var(--card-surface);
+    border-radius: 24px;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+}
+
+/* The Animated Tech-Glow Border */
+.card::before {
+    content: '';
+    position: absolute;
+    width: 150%;
+    height: 150%;
+    background: conic-gradient(
+        transparent, var(--accent), transparent, var(--accent), transparent
+    );
+    animation: rotate 4s linear infinite;
+    opacity: 0.2;
+}
+
+.card:hover::before {
+    opacity: 1;
+}
+
+/* Inner Box Styling */
+.card-inner {
+    position: absolute;
+    inset: 2px; /* Thinner, more elegant border */
+    background: var(--card-surface);
+    border-radius: 22px;
+    z-index: 1;
+    padding: 30px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    text-align: left; /* Modernized alignment */
+}
+
+h2 {
+    font-size: 1.5rem;
+    color: var(--text-primary);
+    font-weight: 700;
+}
+
+p {
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+/* THE BUTTON FIXES */
+.btn {
+    background-color: var(--btn-bg);
+    color: #fff;
+    padding: 14px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 14px;
+    text-decoration: none; 
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: 0.3s;
+}
+
+[data-theme="dark"] .btn {
+    color: #000; /* Contrast for cyan button */
+}
+
+.btn:hover {
+    filter: brightness(1.2);
+    transform: scale(1.02);
+}
+
+/* Theme Toggle Position */
+.theme-switch-wrapper {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    display: flex;
+    align-items: center;
+    z-index: 1000;
+}
+.theme-switch-wrapper em {
+    margin-left: 10px;
+    font-style: normal;
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+.theme-switch {
+    display: inline-block;
+    height: 24px;
+    position: relative;
+    width: 44px;
+}
+.theme-switch input { display:none; }
+.slider {
+    background-color: #ccc;
+    bottom: 0; cursor: pointer; left: 0;
+    position: absolute; right: 0; top: 0;
+    transition: .4s; border-radius: 34px;
+}
+.slider:before {
+    background-color: #fff;
+    bottom: 4px; content: "";
+    height: 16px; left: 4px;
+    position: absolute; transition: .4s;
+    width: 16px; border-radius: 50%;
+}
+input:checked + .slider { background-color: var(--accent); }
+input:checked + .slider:before { transform: translateX(20px); }
+
+/* Rotation Animation */
+@keyframes rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}

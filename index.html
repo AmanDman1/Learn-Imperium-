@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Learn Imperium | Student Support System</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #00e5ff;
+            --accent: #ff4757;
+            --bg: #050a10;
+            --text: #ffffff;
+        }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            margin: 0; padding: 0;
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+        }
+
+        /* ACCESSIBILITY FOCUS STYLE */
+        :focus {
+            outline: 3px solid var(--primary);
+            outline-offset: 5px;
+            background: rgba(0, 229, 255, 0.1);
+        }
+
+        .navbar {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 20px 5%; background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px); border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            position: sticky; top: 0; z-index: 1000;
+        }
+
+        .logo { font-family: 'Orbitron'; font-weight: 700; font-size: 1.5rem; letter-spacing: 2px; }
+        .ai-tag { color: var(--primary); }
+        .nav-links { list-style: none; display: flex; gap: 30px; }
+        .nav-links a { text-decoration: none; color: var(--text); transition: 0.3s; padding: 5px; border-radius: 4px; }
+
+        .hero-section { height: 85vh; display: flex; justify-content: center; align-items: center; text-align: center; }
+        h1 {
+            font-family: 'Orbitron'; font-size: 4rem; margin: 0;
+            background: linear-gradient(to right, #fff, var(--primary));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+
+        .main-btn {
+            background: var(--primary); color: #000; border: none;
+            padding: 18px 45px; font-size: 1.1rem; font-weight: 700;
+            border-radius: 50px; cursor: pointer; transition: 0.3s;
+            text-decoration: none; display: inline-block;
+        }
+
+        .support-section { padding: 100px 5%; background: rgba(255, 255, 255, 0.02); text-align: center; }
+        .support-container { display: flex; justify-content: center; flex-wrap: wrap; gap: 40px; margin-top: 50px; }
+        .support-card {
+            background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(0, 229, 255, 0.2);
+            border-radius: 20px; padding: 40px; width: 300px;
+        }
+        .support-card h3 { color: var(--primary); font-family: 'Orbitron'; margin-bottom: 20px;}
+        .support-card a { color: #fff; text-decoration: none; display: block; margin: 10px 0; font-size: 0.9rem; opacity: 0.9; }
+
+        .background-blur {
+            position: fixed; top: 50%; left: 50%; width: 500px; height: 500px;
+            background: var(--primary); filter: blur(150px); opacity: 0.1;
+            z-index: -1; transform: translate(-50%, -50%);
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <div class="logo">LEARN <span class="ai-tag">IMPERIUM</span></div>
+        <ul class="nav-links">
+            <li><a href="#" class="nav-item">Home</a></li>
+            <li><a href="#contact" class="nav-item">Contact</a></li>
+        </ul>
+    </nav>
+
+    <main class="hero-section">
+        <div class="hero-content">
+            <h1>Learn Imperium</h1>
+            <p class="hero-subtitle">Specialized support for those with disabilities with precision.</p>
+            <a href="agree.html" class="main-btn nav-item">Get Started</a>
+        </div>
+    </main>
+
+    <section id="contact" class="support-section">
+        <h2 style="font-family: 'Orbitron'; font-size: 2.5rem;">Contact Support</h2>
+        <div class="support-container">
+            <div class="support-card">
+                <h3>Amanuel Brhanemeskel</h3>
+                <a href="mailto:amanu052008@gmail.com" class="nav-item" aria-label="Amanuel's Email">amanu052008@gmail.com</a>
+                <a href="tel:+251900357078" class="nav-item" aria-label="Amanuel's Phone Number">+251 900 357078</a>
+            </div>
+            <div class="support-card">
+                <h3>Bruik Tadele</h3>
+                <a href="mailto:birukofficial2026@gmail.com" class="nav-item" aria-label="Bruik's Email">birukofficial2026@gmail.com</a>
+                <a href="tel:+251970244343" class="nav-item" aria-label="Bruik's Phone Number">+251 970 244343</a>
+            </div>
+        </div>
+    </section>
+
+    <div class="background-blur"></div>
+
+    <script>
+        const synth = window.speechSynthesis;
+        const navItems = document.querySelectorAll('.nav-item');
+        let currentIndex = -1;
+
+        // --- KEYBOARD ENGINE: ARROWS & SELECTION ---
+        window.addEventListener('keydown', (e) => {
+            // Navigation with Arrows
+            if (["ArrowUp", "ArrowDown", "ArrowRight", "ArrowLeft"].includes(e.key)) {
+                e.preventDefault();
+                
+                if (e.key === "ArrowDown" || e.key === "ArrowRight") {
+                    currentIndex = (currentIndex + 1) % navItems.length;
+                } else if (e.key === "ArrowUp" || e.key === "ArrowLeft") {
+                    currentIndex = (currentIndex - 1 + navItems.length) % navItems.length;
+                }
+                
+                navItems[currentIndex].focus();
+            }
+
+            // SPACEBAR OR ENTER TO ACTIVATE
+            if ((e.key === " " || e.key === "Enter") && currentIndex !== -1) {
+                // Prevent page scrolling when Space is pressed
+                if (e.key === " ") e.preventDefault();
+                
+                // Navigate to the link
+                window.location.href = navItems[currentIndex].href;
+            }
+        });
+
+        // --- SPEAK LOGIC ---
+        navItems.forEach(item => {
+            item.addEventListener('focus', () => {
+                synth.cancel();
+                const voiceText = item.getAttribute('aria-label') || item.innerText;
+                const utter = new SpeechSynthesisUtterance(voiceText);
+                synth.speak(utter);
+            });
+
+            // Keep Double Click for Mouse users
+            item.addEventListener('click', (e) => {
+                e.preventDefault(); 
+            });
+
+            item.addEventListener('dblclick', () => {
+                window.location.href = item.href;
+            });
+        });
+    </script>
+</body>
+</html>

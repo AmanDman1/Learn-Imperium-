@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="am">
+<head>
+    <meta charset="UTF-8">
+    <title>AI Lens | Instant No-Login</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron&family=Noto+Sans+Ethiopic:wght@400;700&display=swap');
+        :root { --neon: #00e5ff; --bg: #050a10; --card: #111a24; }
+        body { background: var(--bg); color: white; font-family: 'Noto Sans Ethiopic', sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        header { background: var(--card); padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--neon); }
+        .main { display: flex; flex: 1; overflow: hidden; }
+        .view { flex: 1; padding: 20px; overflow-y: auto; border-right: 1px solid #222; position: relative; }
+        canvas { width: 100%; border: 1px solid #333; background: #fff; }
+        .nav-item:focus { outline: 3px solid var(--neon) !important; background: rgba(0, 229, 255, 0.2) !important; }
+        #output-text { font-size: 1.3rem; line-height: 1.8; color: #fff; white-space: pre-wrap; padding: 10px; }
+        .loading { position: absolute; inset: 0; background: rgba(0,0,0,0.8); display: none; align-items: center; justify-content: center; z-index: 10; }
+        .nav-bar { background: var(--card); padding: 15px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; border-top: 1px solid var(--neon); }
+        button { background: var(--neon); color: #000; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-family: 'Orbitron'; font-weight: bold; transition: 0.3s; }
+        .btn-stop { background: #ff4444 !important; color: white; }
+        input[type="file"] { display: none; }
+        .custom-file-upload { color: var(--neon); border: 1px solid var(--neon); padding: 5px 10px; border-radius: 4px; cursor: pointer; font-family: 'Orbitron'; }
+    </style>
+</head>
+<body tabindex="-1">
+
+<header>
+    <div style="font-family:'Orbitron'; color:var(--neon)">AI LENS PRO <small style="font-size:0.6rem;">FAST MODE</small></div>
+    <label class="custom-file-upload nav-item" tabindex="0" aria-label="Upload PDF">
+        UPLOAD BOOK
+        <input type="file" id="file-input" accept=".pdf">
+    </label>
+</header>
+
+<div class="main">
+    <div class="view">
+        <div id="loader" class="loading">
+            <div style="border: 4px solid var(--neon); border-top:4px solid transparent; width:30px; height:30px; border-radius:50%; animation:spin 1s linear infinite"></div>
+        </div>
+        <canvas id="pdf-canvas"></canvas>
+    </div>
+    <div class="view" style="background:#0a1118">
+        <div style="margin-bottom:10px; display: flex; gap:10px; align-items: center;">
+            Go to: <input type="number" id="jump-page" value="1" class="nav-item" style="width:60px; background:#000; border:1px solid var(--neon); color:white; text-align:center;" aria-label="Page Number"> 
+            <button class="nav-item" onclick="jumpToPage()" aria-label="Go">GO</button>
+        </div>
+        <div id="output-text" class="nav-item" tabindex="0" aria-label="Translation Box">Upload a book. Translation will appear here automatically.</div>
+    </div>
+</div>
+
+<div class="nav-bar">
+    <button class="nav-item" onclick="changePage(-1)" aria-label="Previous">PREV</button>
+    <span id="pg-info" style="font-family:Orbitron; padding:10px; color:var(--neon)">PAGE 0 / 0</span>
+    <button class="nav-item" onclick="changePage(1)" aria-label="Next">NEXT</button>
+    <button class="nav-item" onclick="speak()" aria-label="Start Voice">🔊 VOICE</button>
+    <button class="btn-stop nav-item" onclick="stopVoice()" aria-label="Stop">⏹ STOP</button>
+</div>
+
+<script>
+    let pdfDoc = null, pageNum = 1, synth = window.speechSynthesis, navIndex = -1;
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+
+    function announce(txt) {
+        const u = new SpeechSynthesisUtterance(txt); u.rate = 1.4; synth.cancel(); synth.speak(u);
+    }
+
+    // ARROW NAVIGATION ENGINE
+    window.addEventListener('keydown', (e) => {
+        const items = Array.from(document.querySelectorAll('.nav-item')).filter(el => el.offsetParent !== null);
+        if (["ArrowRight", "ArrowDown"].includes(e.key)) {
+            e.preventDefault(); navIndex = (navIndex + 1) % items.length;
+            items[navIndex].focus(); announce(items[navIndex].getAttribute('aria-label'));
+        } 
+        else if (["ArrowLeft", "ArrowUp"].includes(e.key)) {
+            e.preventDefault(); navIndex = (navIndex - 1 + items.length) % items.length;
+            items[navIndex].focus(); announce(items[navIndex].getAttribute('aria-label'));
+        }
+        else if (e.key === " " || e.key === "Enter") {
+            if (document.activeElement.tagName === 'INPUT') return;
+            e.preventDefault();
+            if (document.activeElement.tagName === 'LABEL') document.getElementById('file-input').click();
+            else document.activeElement.click();
+        }
+    });
+
+    document.getElementById('file-input').onchange = async (e) => {
+        const file = e.target.files[0];
+        if(!file) return;
+        const reader = new FileReader();
+        reader.onload = async function() {
+            pdfDoc = await pdfjsLib.getDocument(new Uint8Array(this.result)).promise;
+            renderPage(1);
+        };
+        reader.readAsArrayBuffer(file);
+    };
+
+    async function renderPage(num) {
+        pageNum = num;
+        document.getElementById('loader').style.display = 'flex';
+        try {
+            const page = await pdfDoc.getPage(num);
+            const canvas = document.getElementById('pdf-canvas');
+            const viewport = page.getViewport({ scale: 1.5 });
+            canvas.height = viewport.height; canvas.width = viewport.width;
+            await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+
+            const content = await page.getTextContent();
+            const text = content.items.map(s => s.str).join(" ").substring(0, 2000); // Limit length for speed
+            document.getElementById('pg-info').innerText = `PAGE ${num} / ${pdfDoc.numPages}`;
+            
+            translateText(text);
+        } catch (err) {
+            console.error(err);
+            document.getElementById('loader').style.display = 'none';
+        }
+    }
+
+    async function translateText(text) {
+        if (!text.trim()) {
+            document.getElementById('output-text').innerText = "No text found on this page.";
+            document.getElementById('loader').style.display = 'none';
+            return;
+        }
+
+        const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=am&dt=t&q=${encodeURIComponent(text)}`;
+        
+        try {
+            const response = await fetch(url);
+            const result = await response.json();
+            const translatedText = result[0].map(item => item[0]).join('');
+            document.getElementById('output-text').innerText = translatedText;
+        } catch (error) {
+            document.getElementById('output-text').innerText = "Translation failed. Check internet connection.";
+        }
+        document.getElementById('loader').style.display = 'none';
+    }
+
+    function speak() {
+        const text = document.getElementById('output-text').innerText;
+        if (!text) return;
+        const utter = new SpeechSynthesisUtterance(text);
+        utter.lang = 'am-ET';
+        utter.rate = 0.85;
+        synth.cancel();
+        synth.speak(utter);
+    }
+
+    function stopVoice() { synth.cancel(); }
+
+    function jumpToPage() {
+        const val = parseInt(document.getElementById('jump-page').value);
+        if (val >= 1 && val <= pdfDoc.numPages) renderPage(val);
+    }
+
+    function changePage(delta) {
+        let n = pageNum + delta;
+        if (n >= 1 && n <= pdfDoc.numPages) renderPage(n);
+    }
+</script>
+<style> @keyframes spin { to { transform: rotate(360deg); } } </style>
+</body>
+</html>
