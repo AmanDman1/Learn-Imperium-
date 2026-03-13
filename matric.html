@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Matrix Core | Logic Fixed</title>
+    <title>Matrix Core v2.5 | Unified Engine</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Plus+Jakarta+Sans:wght@300;400;600&display=swap');
         :root { --neon: #00e5ff; --bg: #050a10; --glass: rgba(255, 255, 255, 0.05); --border: rgba(255, 255, 255, 0.1); --gold: #ffd700; --red: #ff4757; }
-        body { background-color: var(--bg); color: white; font-family: 'Plus Jakarta Sans', sans-serif; margin: 0; padding: 20px; }
+        body { background-color: var(--bg); color: white; font-family: 'Plus Jakarta Sans', sans-serif; margin: 0; padding: 20px; outline: none; }
         .container { max-width: 1100px; margin: 0 auto; }
         header h1 { font-family: 'Orbitron'; text-align: center; letter-spacing: 5px; margin-bottom: 20px; }
         header h1 span { color: var(--neon); }
@@ -27,10 +27,12 @@
         .btn-loop { background: rgba(255, 215, 0, 0.1) !important; border: 1px dashed var(--gold) !important; color: var(--gold) !important; }
         .res-area { margin-top: 40px; display: none; grid-template-columns: 1fr 1.2fr; gap: 30px; }
         .ans-card { background: rgba(0, 229, 255, 0.05); border: 1px solid var(--neon); border-radius: 15px; padding: 25px; }
-        .tutor-card { background: #000; border-left: 4px solid var(--gold); padding: 25px; border-radius: 15px; }
+        .tutor-card { background: #000; border-left: 4px solid var(--gold); padding: 25px; border-radius: 15px; max-height: 600px; overflow-y: auto; }
         .ans-matrix { display: grid; gap: 10px; margin-top: 20px; }
-        .ans-cell { height: 45px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.05); color: var(--neon); font-family: 'Orbitron'; border-radius: 6px; }
-        .step-txt { color: #ccc; font-size: 0.9rem; margin-bottom: 10px; border-bottom: 1px solid #222; padding-bottom: 5px; }
+        .ans-cell { height: 45px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.05); color: var(--neon); font-family: 'Orbitron'; border-radius: 6px; border: 1px solid rgba(0,229,255,0.1); }
+        .step-txt { color: #ccc; font-size: 0.85rem; margin-bottom: 12px; border-bottom: 1px solid #222; padding-bottom: 8px; line-height: 1.4; }
+        .math-highlight { color: var(--neon); font-weight: bold; }
+        .deep-dive-btn { background: var(--gold) !important; color: black !important; font-weight: bold; margin-top: 10px; width: 100%; cursor: pointer; border-radius: 8px; padding: 10px; font-family: 'Orbitron'; }
         .blurred { opacity: 0.1; pointer-events: none; filter: blur(4px); }
         .hidden { display: none; }
     </style>
@@ -38,16 +40,16 @@
 <body tabindex="-1">
 
 <div class="container">
-    <header><h1>MATRIX<span>CORE</span></h1></header>
+    <header><h1>MATRIX<span>CORE</span> v2.5</h1></header>
 
     <div class="mode-switcher">
-        <button id="btnS" class="m-btn active nav-item" onclick="setMode('single')" aria-label="Single Mode">SINGLE (A)</button>
-        <button id="btnD" class="m-btn nav-item" onclick="setMode('dual')" aria-label="Dual Mode">DUAL (A & B)</button>
+        <button id="btnS" class="m-btn active nav-item" onclick="setMode('single')" aria-label="Single Matrix Mode" onfocus="speak(this.getAttribute('aria-label'))">SINGLE (A)</button>
+        <button id="btnD" class="m-btn nav-item" onclick="setMode('dual')" aria-label="Dual Matrix Mode" onfocus="speak(this.getAttribute('aria-label'))">DUAL (A & B)</button>
     </div>
 
     <div class="grid-ctrl">
-        <button class="nav-item" onclick="resize(2)" aria-label="2 by 2">2 x 2</button>
-        <button class="nav-item" onclick="resize(3)" aria-label="3 by 3">3 x 3</button>
+        <button class="nav-item" onclick="resize(2)" aria-label="Resize to 2 by 2" onfocus="speak(this.getAttribute('aria-label'))">2 x 2</button>
+        <button class="nav-item" onclick="resize(3)" aria-label="Resize to 3 by 3" onfocus="speak(this.getAttribute('aria-label'))">3 x 3</button>
     </div>
 
     <main class="calculator-layout">
@@ -59,18 +61,18 @@
         <div class="ops-panel">
             <div id="single-ops">
                 <div class="op-section-label">ANALYSIS</div>
-                <button class="nav-item" onclick="solve('det')" aria-label="Determinant">DETERMINANT</button>
-                <button class="nav-item" onclick="solve('trans')" aria-label="Transpose">TRANSPOSE</button>
-                <button class="nav-item" onclick="solve('trace')" aria-label="Trace">TRACE</button>
-                <button class="nav-item" onclick="solve('adj')" aria-label="Adjoint">ADJOINT</button>
-                <button class="nav-item" onclick="solve('inv')" aria-label="Inverse">INVERSE</button>
-                <button class="nav-item btn-loop" onclick="resetNav()" aria-label="Loop back to top">LOOP</button>
+                <button class="nav-item" onclick="solve('det')" aria-label="Calculate Determinant" onfocus="speak(this.getAttribute('aria-label'))">DETERMINANT</button>
+                <button class="nav-item" onclick="solve('trans')" aria-label="Calculate Transpose" onfocus="speak(this.getAttribute('aria-label'))">TRANSPOSE</button>
+                <button class="nav-item" onclick="solve('trace')" aria-label="Calculate Trace" onfocus="speak(this.getAttribute('aria-label'))">TRACE</button>
+                <button class="nav-item" onclick="solve('adj')" aria-label="Calculate Adjoint" onfocus="speak(this.getAttribute('aria-label'))">ADJOINT</button>
+                <button class="nav-item" onclick="solve('inv')" aria-label="Calculate Inverse" onfocus="speak(this.getAttribute('aria-label'))">INVERSE</button>
+                <button class="nav-item btn-loop" onclick="resetNav()" aria-label="Loop back to top" onfocus="speak(this.getAttribute('aria-label'))">LOOP</button>
             </div>
             <div id="dual-ops" class="hidden">
                 <div class="op-section-label">INTERACTION</div>
-                <button class="nav-item" onclick="solve('add')" aria-label="Add A and B">A + B</button>
-                <button class="nav-item" onclick="solve('sub')" aria-label="Subtract B from A">A - B</button>
-                <button class="nav-item" onclick="solve('mul')" aria-label="Multiply A and B">A × B</button>
+                <button class="nav-item" onclick="solve('add')" aria-label="Add Matrix A and B" onfocus="speak(this.getAttribute('aria-label'))">A + B</button>
+                <button class="nav-item" onclick="solve('sub')" aria-label="Subtract Matrix B from A" onfocus="speak(this.getAttribute('aria-label'))">A - B</button>
+                <button class="nav-item" onclick="solve('mul')" aria-label="Multiply Matrix A and B" onfocus="speak(this.getAttribute('aria-label'))">A × B</button>
             </div>
         </div>
 
@@ -87,46 +89,52 @@
             <div id="val-box" style="font-size:2.5rem; color:var(--neon); font-family:Orbitron; text-align:center; margin-top:10px;"></div>
         </div>
         <div class="tutor-card">
-            <h3 style="font-family:Orbitron; color:var(--gold);">AI TUTOR</h3>
+            <h3 style="font-family:Orbitron; color:var(--gold);">PEDAGOGY HUB</h3>
             <div id="tutor-steps" style="margin-top:15px;"></div>
-            <button class="nav-item" onclick="document.getElementById('resultDisplay').style.display='none'" style="margin-top:15px; background:var(--neon); color:black;" aria-label="Close Report">CLOSE</button>
+            <button id="deepDiveBtn" class="nav-item deep-dive-btn" onclick="runDeepDive()" aria-label="Explain steps out loud">DEEP DIVE (EXPLAIN STEPS)</button>
+            <button class="nav-item" onclick="document.getElementById('resultDisplay').style.display='none'; synth.cancel();" style="margin-top:10px; background:var(--neon); color:black; width:100%;" aria-label="Close report" onfocus="speak(this.getAttribute('aria-label'))">CLOSE</button>
         </div>
     </section>
 </div>
 
 <script>
-    let dim = 2;
-    let mode = 'single';
-    let navIndex = -1;
+    let dim = 2; let mode = 'single'; let navIndex = -1;
+    let currentSteps = []; let currentOpName = "";
     const synth = window.speechSynthesis;
 
     function speak(txt) {
+        if (!txt) return;
         const u = new SpeechSynthesisUtterance(txt);
         u.rate = 1.4; synth.cancel(); synth.speak(u);
     }
 
-    // --- NAVIGATION LOGIC ---
-    function resetNav() {
-        navIndex = -1;
-        const items = document.querySelectorAll('.nav-item:not(.hidden):not(.blurred .nav-item)');
-        items[0].focus();
-        speak("Looped back to top.");
+    function runDeepDive() {
+        if (currentSteps.length === 0) return;
+        speak(`Deep dive into ${currentOpName}. ` + currentSteps.join(". "));
     }
 
-    window.addEventListener('keydown', (e) => {
-        // Only select items that are visible and NOT inside a blurred (Matrix B) container
-        const items = Array.from(document.querySelectorAll('.nav-item')).filter(el => {
+    function resetNav() {
+        navIndex = -1;
+        const items = getNavItems();
+        if(items.length > 0) { items[0].focus(); speak("Looped to top."); }
+    }
+
+    function getNavItems() {
+        return Array.from(document.querySelectorAll('.nav-item')).filter(el => {
             const isHidden = el.offsetParent === null || el.closest('.hidden');
             const isBlurred = el.closest('.blurred');
             return !isHidden && !isBlurred;
         });
+    }
 
+    window.addEventListener('keydown', (e) => {
+        const items = getNavItems();
         if (["ArrowRight", "ArrowDown"].includes(e.key)) {
             e.preventDefault(); navIndex = (navIndex + 1) % items.length;
-            items[navIndex].focus(); speak(items[navIndex].getAttribute('aria-label'));
+            items[navIndex].focus();
         } else if (["ArrowLeft", "ArrowUp"].includes(e.key)) {
             e.preventDefault(); navIndex = (navIndex - 1 + items.length) % items.length;
-            items[navIndex].focus(); speak(items[navIndex].getAttribute('aria-label'));
+            items[navIndex].focus();
         } else if (e.key === "Enter" || e.key === " ") {
             if (document.activeElement.tagName !== "INPUT" && navIndex !== -1) {
                 e.preventDefault(); items[navIndex].click();
@@ -142,7 +150,7 @@
                m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]);
     }
 
-    function getAdjoint(m) {
+    function getAdj(m) {
         if (m.length === 2) return [[m[1][1], -m[0][1]], [-m[1][0], m[0][0]]];
         let adj = [];
         for (let i = 0; i < 3; i++) {
@@ -151,70 +159,93 @@
                 let minor = [];
                 for (let r = 0; r < 3; r++) {
                     if (r === i) continue;
-                    let minorRow = [];
-                    for (let c = 0; c < 3; c++) {
-                        if (c === j) continue;
-                        minorRow.push(m[r][c]);
-                    }
-                    minor.push(minorRow);
+                    let mRow = [];
+                    for (let c = 0; c < 3; c++) if (c !== j) mRow.push(m[r][c]);
+                    minor.push(mRow);
                 }
-                let cofactor = ((i + j) % 2 === 0 ? 1 : -1) * getDet(minor);
-                row.push(cofactor);
+                let cof = ((i + j) % 2 === 0 ? 1 : -1) * getDet(minor);
+                row.push(cof);
             }
             adj.push(row);
         }
-        return adj[0].map((_, colIndex) => adj.map(row => row[colIndex])); 
+        return adj[0].map((_, col) => adj.map(r => r[col]));
     }
 
     function solve(op) {
-        const A = getM('grid-a');
-        const B = getM('grid-b');
-        let res = null; let steps = []; let v = null;
+        const A = getM('grid-a'); const B = getM('grid-b');
+        let res = null; let v = null;
+        currentSteps = []; currentOpName = op;
         document.getElementById('ans-matrix').style.display = 'grid';
         document.getElementById('val-box').innerText = '';
 
-        if (op === 'trace') {
-            v = A.reduce((sum, row, i) => sum + row[i], 0);
-            steps = ["My advice for the Trace is to sum the diagonal.", `Sum: ${v}`];
-            document.getElementById('ans-matrix').style.display = 'none';
-            document.getElementById('val-box').innerText = v;
-        } else if (op === 'adj') {
-            res = getAdjoint(A);
-            steps = ["My advice for the Adjoint is to transpose the cofactor matrix."];
-        } else if (op === 'det') {
+        if (op === 'det') {
             v = getDet(A);
-            steps = ["My advice for the Determinant is simple cross-math.", `Result: ${v}`];
+            currentSteps.push(`To find the determinant, we cross-multiply elements`, `The final result is ${v}`);
             document.getElementById('ans-matrix').style.display = 'none';
             document.getElementById('val-box').innerText = v;
-        } else if (op === 'inv') {
-            let det = getDet(A);
-            if (det === 0) {
-                steps = ["The inverse is impossible because the determinant is zero."];
-                document.getElementById('ans-matrix').style.display = 'none';
-                document.getElementById('val-box').innerText = "N/A";
-            } else {
-                let adj = getAdjoint(A);
-                res = adj.map(row => row.map(val => Number((val / det).toFixed(2))));
-                steps = ["Inverse = Adjoint divided by Determinant."];
-            }
-        } else if (op === 'trans') {
-            res = A[0].map((_, i) => A.map(row => row[i]));
-            steps = ["Rows become columns in a Transpose."];
-        } else if (op === 'add') {
-            res = A.map((r,i) => r.map((val,j) => val + B[i][j]));
-            steps = ["Adding matching cells together."];
-        } else if (op === 'sub') {
-            res = A.map((r,i) => r.map((val,j) => val - B[i][j]));
-            steps = ["Subtracting matching cells."];
-        } else if (op === 'mul') {
-            res = Array(dim).fill().map(() => Array(dim).fill(0));
-            for(let i=0; i<dim; i++) for(let j=0; j<dim; j++) for(let k=0; k<dim; k++) res[i][j] += A[i][k] * B[k][j];
-            steps = ["Multiplying rows by columns."];
+            speak(`The Determinant is ${v}`);
+        } 
+        else if (op === 'adj') {
+            res = getAdj(A);
+            currentSteps.push("Finding the Adjoint requires calculating the cofactor of each element and then transposing the resulting matrix.");
+            speak("Adjoint calculated.");
         }
-        render(res, steps, op);
+        else if (op === 'inv') {
+            let d = getDet(A);
+            if(d === 0) {
+                speak("Inverse impossible. Determinant is zero.");
+                currentSteps.push("The determinant is zero, meaning this is a singular matrix with no inverse.");
+                document.getElementById('ans-matrix').style.display = 'none';
+                document.getElementById('val-box').innerText = "NaN";
+            } else {
+                let adjoint = getAdj(A);
+                res = adjoint.map(r => r.map(val => Number((val/d).toFixed(2))));
+                currentSteps.push(`We find the inverse by taking the Adjoint matrix and dividing every element by the determinant which is ${d}`);
+                speak("Inverse calculation complete.");
+            }
+        }
+        else if (op === 'add') {
+            res = A.map((r,i) => r.map((val,j) => val + B[i][j]));
+            currentSteps.push("Addition is cell-by-cell. We add each element of A to its counterpart in B.");
+            speak("Addition complete.");
+        }
+        else if (op === 'sub') {
+            res = A.map((r,i) => r.map((val,j) => val - B[i][j]));
+            currentSteps.push("Subtraction is cell-by-cell. We subtract each element of B from A.");
+            speak("Subtraction complete.");
+        }
+        else if (op === 'mul') {
+            res = Array(dim).fill().map(() => Array(dim).fill(0));
+            currentSteps.push("For multiplication, we take the dot product of rows from A and columns from B");
+            for(let i=0; i<dim; i++) {
+                for(let j=0; j<dim; j++) {
+                    let calcTxt = "";
+                    for(let k=0; k<dim; k++) {
+                        res[i][j] += A[i][k] * B[k][j];
+                        calcTxt += `(${A[i][k]} times ${B[k][j]})` + (k<dim-1 ? " plus ":"");
+                    }
+                    currentSteps.push(`Position ${i+1}, ${j+1} is calculated as ${calcTxt}, resulting in ${res[i][j]}`);
+                }
+            }
+            speak("Multiplication complete.");
+        }
+        else if (op === 'trace') {
+            v = A.reduce((sum, row, i) => sum + row[i], 0);
+            currentSteps.push(`The trace is the sum of the main diagonal: ${A.map((r,i)=>r[i]).join(' plus ')}`);
+            document.getElementById('ans-matrix').style.display = 'none';
+            document.getElementById('val-box').innerText = v;
+            speak(`The Trace is ${v}`);
+        }
+        else if (op === 'trans') {
+            res = A[0].map((_, i) => A.map(row => row[i]));
+            currentSteps.push("A transpose flips the matrix over its diagonal, turning rows into columns.");
+            speak("Transpose complete.");
+        }
+
+        render(res, currentSteps);
     }
 
-    function render(m, s, op) {
+    function render(m, s) {
         document.getElementById('resultDisplay').style.display = 'grid';
         const grid = document.getElementById('ans-matrix');
         if (m) {
@@ -222,7 +253,6 @@
             grid.innerHTML = m.flat().map(val => `<div class="ans-cell">${val}</div>`).join('');
         }
         document.getElementById('tutor-steps').innerHTML = s.map(st => `<div class="step-txt">${st}</div>`).join('');
-        speak(`Calculating ${op}. ` + s.join(' '));
     }
 
     function setMode(m) {
@@ -236,30 +266,24 @@
 
     function resize(n) {
         dim = n;
-        makeGrid('grid-a', 'Matrix A');
-        makeGrid('grid-b', 'Matrix B');
-        navIndex = -1; // Reset navigation on resize
+        makeGrid('grid-a', 'A'); makeGrid('grid-b', 'B');
+        navIndex = -1;
     }
 
-    function makeGrid(id, name) {
+    function makeGrid(id, mLabel) {
         const c = document.getElementById(id);
         c.style.gridTemplateColumns = `repeat(${dim}, 1fr)`;
         c.innerHTML = '';
-        for (let i = 0; i < dim*dim; i++) {
-            const inp = document.createElement('input');
-            inp.type = 'number'; inp.value = 0; inp.className = "nav-item";
-            inp.setAttribute('aria-label', `${name} cell`);
-            
-            // AUTO-CLEAR ZERO LOGIC
-            inp.onfocus = () => {
-                if (inp.value === "0") inp.value = "";
-                speak(inp.getAttribute('aria-label'));
-            };
-            inp.onblur = () => {
-                if (inp.value === "") inp.value = "0";
-            };
-            
-            c.appendChild(inp);
+        for (let i = 0; i < dim; i++) {
+            for (let j = 0; j < dim; j++) {
+                const inp = document.createElement('input');
+                inp.type = 'number'; inp.value = 0; inp.className = "nav-item";
+                const cName = `${mLabel}${i+1}${j+1}`;
+                inp.setAttribute('aria-label', `Matrix ${mLabel} cell ${cName}`);
+                inp.onfocus = () => { if (inp.value === "0") inp.value = ""; speak(cName); };
+                inp.onblur = () => { if (inp.value === "") inp.value = "0"; };
+                c.appendChild(inp);
+            }
         }
     }
 
