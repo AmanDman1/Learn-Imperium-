@@ -2,435 +2,605 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="color-scheme" content="dark">
-    <title>Omni-Engine v18.0 | Structural Stability Build</title>
+    <title>Imperium Analytical Core v25.0 | Precision Geometry</title>
     
     <style>
-        /* ================================================================
-           OMNI-ENGINE v18.0: THE STABILITY PROTOCOL
-           ================================================================
-        */
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Plus+Jakarta+Sans:wght@300;400;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Plus+Jakarta+Sans:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap');
         
         :root { 
-            --primary: #00e5ff; 
-            --accent: #ff4757; 
-            --geo-gold: #ffc107;
-            --bg: #010408; 
+            --cyan: #00e5ff; 
+            --red: #ff4757;
+            --gold: #ffc107;
+            --green: #2ed573;
+            --bg-dark: #010204; 
+            --bg-panel: #0d1117;
             --glass: rgba(255, 255, 255, 0.04); 
             --glass-border: rgba(255, 255, 255, 0.1);
+            --text-main: #ffffff;
+            --text-dim: #94a3b8;
         }
 
-        * { box-sizing: border-box; outline: none; -webkit-tap-highlight-color: transparent; }
+        * { 
+            box-sizing: border-box; 
+            outline: none; 
+            -webkit-tap-highlight-color: transparent; 
+            margin: 0; 
+            padding: 0;
+        }
 
         body { 
-            background: var(--bg); 
-            color: white; 
-            margin: 0; 
+            background-color: var(--bg-dark); 
+            background-image: 
+                radial-gradient(circle at 0% 0%, rgba(0, 229, 255, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 100% 100%, rgba(255, 71, 87, 0.05) 0%, transparent 50%);
+            color: var(--text-main); 
             font-family: 'Plus Jakarta Sans', sans-serif; 
             display: flex; 
-            flex-direction: column; 
+            justify-content: center;
             align-items: center; 
-            padding: 10px;
             min-height: 100vh;
+            padding: 20px;
+            overflow: hidden;
         }
 
-        .engine-card { 
+        /* MAIN CALCULATOR FRAME */
+        .calculator-wrapper { 
             width: 100%; 
-            max-width: 500px; 
-            background: var(--glass); 
-            backdrop-filter: blur(50px); 
+            max-width: 1100px; 
+            display: grid;
+            grid-template-columns: 1.4fr 1fr;
+            gap: 25px;
+            background: var(--bg-panel); 
             border: 1px solid var(--glass-border); 
-            border-radius: 30px; 
-            padding: 15px; 
-            box-shadow: 0 40px 100px rgba(0,0,0,0.9);
+            border-radius: 32px; 
+            padding: 35px; 
+            box-shadow: 0 50px 150px rgba(0,0,0,0.9);
+            position: relative;
+            backdrop-filter: blur(20px);
+        }
+
+        /* HUD TOP BAR */
+        .system-status-bar {
+            position: absolute;
+            top: 15px;
+            left: 35px;
+            right: 35px;
+            display: flex;
+            justify-content: space-between;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.65rem;
+            color: var(--text-dim);
+            letter-spacing: 2px;
+            z-index: 10;
+        }
+
+        .status-node { display: flex; align-items: center; gap: 8px; }
+        .pulse { width: 6px; height: 6px; background: var(--green); border-radius: 50%; box-shadow: 0 0 10px var(--green); animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+
+        /* GRAPH VIEWPORT */
+        .viewport-container {
+            position: relative;
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 15px;
         }
 
-        /* DYNAMIC VIEWPORT */
-        .viewport {
-            width: 100%;
-            height: 230px;
-            background: #000;
-            border-radius: 20px;
-            position: relative;
+        .canvas-wrapper {
+            width: 100%; 
+            height: 450px;
+            background: #000; 
+            border-radius: 24px;
+            position: relative; 
             overflow: hidden;
-            border-bottom: 3px solid var(--primary);
+            border: 1px solid var(--glass-border);
+            cursor: crosshair;
         }
 
         canvas { width: 100%; height: 100%; }
 
-        .hud {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            right: 10px;
-            pointer-events: none;
+        /* CHANNEL HUD */
+        .hud-overlay {
+            position: absolute; 
+            top: 20px; 
+            left: 20px; 
+            pointer-events: none; 
             z-index: 5;
         }
 
-        #func-display { font-family: 'Orbitron'; font-size: 1.2rem; color: var(--primary); margin-bottom: 2px; }
-        #shape-status { font-family: 'Orbitron'; font-size: 0.6rem; color: var(--geo-gold); letter-spacing: 1px; }
-
-        /* CONTROL LAYOUT */
-        .top-row { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 8px; margin-bottom: 5px; }
-
-        .control-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-        
-        .nav-btn { 
-            padding: 15px 2px; 
-            border-radius: 12px; 
-            border: 1px solid rgba(255,255,255,0.06); 
-            background: rgba(255,255,255,0.05); 
-            color: #fff; 
-            cursor: pointer; 
-            font-family: 'Orbitron'; 
-            font-size: 0.7rem;
-            transition: transform 0.1s, background 0.2s;
+        .channel-info {
             display: flex;
-            align-items: center;
-            justify-content: center;
+            flex-direction: column;
+            gap: 10px;
         }
 
-        /* ARROW KEY HIGHLIGHT */
-        .nav-btn:focus { 
-            background: var(--primary) !important; 
-            color: black !important; 
-            transform: scale(1.08); 
-            box-shadow: 0 0 20px var(--primary);
-            z-index: 10;
-            border-color: white;
+        .channel-card {
+            padding: 12px 20px;
+            border-radius: 14px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            background: rgba(0,0,0,0.85);
+            border-left: 4px solid transparent;
+            backdrop-filter: blur(10px);
+            transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+            min-width: 220px;
         }
 
-        #voiceBtn { border-color: var(--primary); color: var(--primary); }
-        .active-mic { background: var(--accent) !important; color: white !important; animation: pulse 1s infinite; }
+        #card-a { border-color: var(--cyan); color: var(--cyan); }
+        #card-b { border-color: var(--red); color: var(--red); opacity: 0.3; transform: scale(0.95); transform-origin: left; }
+        
+        .card-active { opacity: 1 !important; transform: scale(1) translateX(10px) !important; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
 
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
+        /* TELEMETRY ANALYTICS */
+        .telemetry-panel {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
 
-        .probe-btn { border-color: var(--geo-gold); color: var(--geo-gold); font-size: 0.55rem; }
-        .analyze-btn { grid-column: span 4; background: var(--primary); color: black; font-weight: bold; margin-top: 5px; }
+        .telemetry-header {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.8rem;
+            color: var(--gold);
+            border-bottom: 1px solid var(--glass-border);
+            padding-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+        }
 
-        #tracker {
-            position: absolute;
-            width: 12px;
-            height: 12px;
-            border: 2px solid var(--geo-gold);
-            border-radius: 50%;
-            display: none;
-            transform: translate(-50%, -50%);
-            pointer-events: none;
-            box-shadow: 0 0 10px var(--geo-gold);
+        .telemetry-data { display: flex; flex-direction: column; gap: 15px; }
+
+        .data-block { display: flex; flex-direction: column; gap: 5px; }
+        .label { font-size: 0.65rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 2px; font-weight: 700; }
+        .value { font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; color: var(--text-main); }
+
+        /* KEYPAD GRID & NAVIGATION */
+        .controls-panel { display: flex; flex-direction: column; gap: 15px; }
+
+        .top-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        
+        .grid-keypad { 
+            display: grid; 
+            grid-template-columns: repeat(4, 1fr); 
+            gap: 12px; 
+        }
+
+        .btn { 
+            background: var(--glass);
+            color: var(--text-main);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px; 
+            padding: 22px 5px;
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            font-size: 1.15rem;
+            font-weight: 700;
+            cursor: pointer; 
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn:hover { background: rgba(255,255,255,0.08); transform: translateY(-3px); }
+        .btn:focus { 
+            background: var(--text-main) !important; 
+            color: var(--bg-dark) !important; 
+            transform: scale(1.05); 
+            box-shadow: 0 0 30px rgba(255,255,255,0.3);
+            z-index: 20;
+        }
+
+        .btn-sci { font-family: 'Orbitron', sans-serif; font-size: 0.8rem; color: #a29bfe; }
+        .btn-op { color: var(--gold); font-size: 1.4rem; }
+        .btn-ac { color: var(--red); }
+        
+        .btn-primary { 
+            background: rgba(0, 229, 255, 0.1); 
+            border-color: var(--cyan); 
+            color: var(--cyan); 
+            font-size: 0.7rem; 
+            font-family: 'Orbitron', sans-serif;
+            padding: 15px;
+        }
+
+        /* SCROLLBAR & SCALING */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 10px; }
+
+        @media (max-width: 950px) {
+            .calculator-wrapper { grid-template-columns: 1fr; }
+            .canvas-wrapper { height: 350px; }
         }
     </style>
 </head>
 <body>
 
-    <div class="engine-card">
-        <div class="viewport">
-            <div class="hud">
-                <div id="func-display">y = 0</div>
-                <div id="shape-status">SYSTEM READY...</div>
+    <div class="calculator-wrapper">
+        <div class="system-status-bar">
+            <div class="status-node"><div class="pulse"></div> CORE_STABLE</div>
+            <div id="chrono-clock">TIME: 00:00:00</div>
+            <div class="status-node">PRECISION: SUB_PX</div>
+        </div>
+
+        <div class="viewport-container">
+            <div class="canvas-wrapper" id="canvas-frame">
+                <div class="hud-overlay">
+                    <div class="channel-info">
+                        <div id="card-a" class="channel-card card-active">
+                            CH_ALPHA: <span id="disp-a">y = 0</span>
+                        </div>
+                        <div id="card-b" class="channel-card">
+                            CH_BETA: <span id="disp-b">y = 0</span>
+                        </div>
+                    </div>
+                </div>
+                <canvas id="mainCanvas"></canvas>
             </div>
-            <div id="tracker"></div>
-            <canvas id="geoCanvas"></canvas>
+
+            <div class="telemetry-panel">
+                <div class="telemetry-header">
+                    GEOMETRIC TELEMETRY
+                    <span id="coord-voice-tag" style="font-size:0.6rem; color:var(--cyan)">COORDINATE_VOICE_READY</span>
+                </div>
+                
+                <div class="telemetry-data">
+                    <div class="data-block">
+                        <span class="label">Primary Signature (A)</span>
+                        <span class="value" id="tele-a" style="color:var(--cyan)">Scanning...</span>
+                    </div>
+                    <div class="data-block">
+                        <span class="label">Secondary Signature (B)</span>
+                        <span class="value" id="tele-b" style="color:var(--red)">Scanning...</span>
+                    </div>
+                    <div class="data-block">
+                        <span class="label">Intersection Coordinates (A ∩ B)</span>
+                        <span class="value" id="tele-int" style="color:var(--green)">Waiting for input...</span>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <div class="top-row">
-            <button id="voiceBtn" class="nav-btn" onclick="toggleMic()">🎤 MIC</button>
-            <button class="nav-btn probe-btn" onclick="findVertex()">VERT</button>
-            <button class="nav-btn probe-btn" onclick="findXInt()">X-INT</button>
-            <button class="nav-btn probe-btn" onclick="findYInt()">Y-INT</button>
+        <div class="controls-panel">
+            <div class="top-actions">
+                <button class="btn btn-primary nav-btn" id="btn-switch" onclick="switchChannel()">TOGGLE CHANNEL</button>
+                <button class="btn btn-primary nav-btn" id="btn-analyze" style="color:var(--gold); border-color:var(--gold);" onclick="performDeepAnalysis()">ANALYZE</button>
+                <button class="btn btn-primary nav-btn" id="btn-time" style="color:var(--green); border-color:var(--green);" onclick="readTime()">VOICE TIME</button>
+            </div>
+
+            <div class="grid-keypad">
+                <button class="btn btn-sci nav-btn" onclick="input('abs(')">|X|</button>
+                <button class="btn btn-sci nav-btn" onclick="input('sqrt(')">√</button>
+                <button class="btn btn-sci nav-btn" onclick="input('^2')">X²</button>
+                <button class="btn btn-ac nav-btn" onclick="clearData()">AC</button>
+
+                <button class="btn nav-btn" onclick="input('x')" style="color:var(--cyan); font-size:1.4rem;">X</button>
+                <button class="btn nav-btn" onclick="input('^')">^</button>
+                <button class="btn nav-btn" onclick="input('^3')">X³</button>
+                <button class="btn btn-op nav-btn" onclick="input('/')">÷</button>
+
+                <button class="btn nav-btn" onclick="input('7')">7</button>
+                <button class="btn nav-btn" onclick="input('8')">8</button>
+                <button class="btn nav-btn" onclick="input('9')">9</button>
+                <button class="btn btn-op nav-btn" onclick="input('*')">×</button>
+
+                <button class="btn nav-btn" onclick="input('4')">4</button>
+                <button class="btn nav-btn" onclick="input('5')">5</button>
+                <button class="btn nav-btn" onclick="input('6')">6</button>
+                <button class="btn btn-op nav-btn" onclick="input('-')">−</button>
+
+                <button class="btn nav-btn" onclick="input('1')">1</button>
+                <button class="btn nav-btn" onclick="input('2')">2</button>
+                <button class="btn nav-btn" onclick="input('3')">3</button>
+                <button class="btn btn-op nav-btn" onclick="input('+')">+</button>
+
+                <button class="btn nav-btn" onclick="input('0')">0</button>
+                <button class="btn nav-btn" onclick="input('.')">.</button>
+                <button class="btn nav-btn" onclick="input('(')">(</button>
+                <button class="btn nav-btn" onclick="input(')')">)</button>
+            </div>
         </div>
 
-        <div class="control-grid">
-            <button class="nav-btn" style="color:var(--primary)" onclick="addVal('x')">X</button>
-            <button class="nav-btn" onclick="clearAll()" style="color:var(--accent)">AC</button>
-            <button class="nav-btn" onclick="addVal('**2')">x²</button>
-            <button class="nav-btn" onclick="addVal('**')">^</button>
-
-            <button class="nav-btn" onclick="addVal('7')">7</button>
-            <button class="nav-btn" onclick="addVal('8')">8</button>
-            <button class="nav-btn" onclick="addVal('9')">9</button>
-            <button class="nav-btn" onclick="addVal('/')">÷</button>
-
-            <button class="nav-btn" onclick="addVal('4')">4</button>
-            <button class="nav-btn" onclick="addVal('5')">5</button>
-            <button class="nav-btn" onclick="addVal('6')">6</button>
-            <button class="nav-btn" onclick="addVal('*')">×</button>
-
-            <button class="nav-btn" onclick="addVal('1')">1</button>
-            <button class="nav-btn" onclick="addVal('2')">2</button>
-            <button class="nav-btn" onclick="addVal('3')">3</button>
-            <button class="nav-btn" onclick="addVal('-')">−</button>
-
-            <button class="nav-btn" onclick="addVal('+')">+</button>
-            <button class="nav-btn" onclick="addVal('0')">0</button>
-            <button class="nav-btn" onclick="addVal('.')">.</button>
-            <button class="nav-btn" onclick="addVal('(')">(</button>
-
-            <button class="nav-btn analyze-btn" onclick="analyzeAll()">GENERATE COMPLETE ANALYSIS</button>
-        </div>
     </div>
 
 <script>
-    /* ================================================================
-       ENGINE CORE v18.0 - LINE 500 COMPLIANCE
-       ================================================================
-    */
+    /**
+     * ========================================================================
+     * IMPERIUM ANALYTICAL CORE v25.0: THE PRECISION MODULE
+     * ========================================================================
+     */
 
-    let expr = "";
-    let isMicOn = false;
-    let recognition;
+    let expA = "";
+    let expB = "";
+    let activeCh = 'A';
     const synth = window.speechSynthesis;
-
-    const canvas = document.getElementById('geoCanvas');
+    
+    // UI Refs
+    const canvas = document.getElementById('mainCanvas');
     const ctx = canvas.getContext('2d');
-    const funcText = document.getElementById('func-display');
-    const shapeText = document.getElementById('shape-status');
-    const tracker = document.getElementById('tracker');
+    const clockEl = document.getElementById('chrono-clock');
+    
+    // Grid Nav Data
+    let navIndex = 0;
+    const navElements = document.querySelectorAll('.nav-btn');
 
-    // ARROW KEY NAVIGATION SYSTEM (REBUILT)
-    let buttons = [];
-    let currentIndex = 0;
-
-    function refreshButtonList() {
-        buttons = Array.from(document.querySelectorAll('.nav-btn'));
-    }
-
+    // --- INITIALIZATION ---
     window.addEventListener('DOMContentLoaded', () => {
-        refreshButtonList();
-        buttons[0].focus();
+        initClock();
         initCanvas();
+        window.addEventListener('resize', initCanvas);
+        navElements[0].focus();
+        announce("Precision Engine Active. Awaiting Geometry.");
+        
+        // COORDINATE TOUCH LISTENER
+        document.getElementById('canvas-frame').addEventListener('click', (e) => handleCanvasClick(e));
     });
 
-    window.addEventListener('keydown', (e) => {
-        refreshButtonList();
-        if (["ArrowRight", "ArrowDown"].includes(e.key)) {
-            e.preventDefault();
-            currentIndex = (currentIndex + 1) % buttons.length;
-            buttons[currentIndex].focus();
-            speakLabel(buttons[currentIndex].innerText);
-        } else if (["ArrowLeft", "ArrowUp"].includes(e.key)) {
-            e.preventDefault();
-            currentIndex = (currentIndex - 1 + buttons.length) % buttons.length;
-            buttons[currentIndex].focus();
-            speakLabel(buttons[currentIndex].innerText);
-        }
-    });
-
-    function speakLabel(txt) {
-        let clean = txt.replace('**2', 'Squared').replace('**', 'Power').replace('-', 'Minus').replace('+', 'Plus');
-        speak(clean);
+    // --- CHRONOS & VOICE ---
+    function initClock() {
+        setInterval(() => {
+            const d = new Date();
+            clockEl.innerText = "TIME: " + d.toLocaleTimeString('en-GB', { hour12: false });
+        }, 1000);
     }
 
-    function speak(t) {
-        if(!synth) return;
+    function announce(text) {
+        if (!synth) return;
         synth.cancel();
-        const msg = new SpeechSynthesisUtterance(t);
-        msg.rate = 1.2;
+        const msg = new SpeechSynthesisUtterance(text);
+        msg.rate = 1.1; 
+        msg.pitch = 0.9;
         synth.speak(msg);
     }
 
-    // VOICE PARSER
-    if ('webkitSpeechRecognition' in window) {
-        recognition = new webkitSpeechRecognition();
-        recognition.continuous = true;
-        recognition.interimResults = true;
-        recognition.onresult = (e) => {
-            let transcript = "";
-            for (let i = e.resultIndex; i < e.results.length; ++i) { 
-                transcript += e.results[i][0].transcript; 
-            }
-            processVoice(transcript);
-        };
+    function readTime() {
+        const t = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true });
+        announce("System Time is " + t);
     }
 
-    function toggleMic() {
-        if (!isMicOn) {
-            expr = "";
-            recognition.start();
-            isMicOn = true;
-            document.getElementById('voiceBtn').classList.add('active-mic');
-            speak("Scanning.");
-        } else {
-            stopMic();
-            analyzeAll();
+    // --- CANVAS INTERACTION (THE "EXACT COORDINATE" FIX) ---
+    function handleCanvasClick(e) {
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        
+        // Convert screen X to mathematical X
+        const mathX = (mouseX / rect.width) * 20 - 10;
+        
+        // Evaluate the active expression at this X
+        const activeExpr = activeCh === 'A' ? expA : expB;
+        if (!activeExpr) {
+            announce("No function detected on active channel.");
+            return;
+        }
+
+        const mathY = calculate(activeExpr, mathX);
+        const type = identifyType(activeExpr);
+
+        if (!isNaN(mathY)) {
+            // Dictate exact coordinate
+            const voiceStr = `Coordinate. X ${mathX.toFixed(2)}, Y ${mathY.toFixed(2)}. ${type}.`;
+            announce(voiceStr);
+            
+            // Draw temporary marker
+            draw();
+            ctx.beginPath();
+            ctx.arc(mouseX, rect.height/2 - (mathY * (rect.height/20)), 6, 0, Math.PI*2);
+            ctx.fillStyle = activeCh === 'A' ? "#00e5ff" : "#ff4757";
+            ctx.fill();
         }
     }
 
-    function stopMic() {
-        if(recognition) recognition.stop();
-        isMicOn = false;
-        document.getElementById('voiceBtn').classList.remove('active-mic');
+    // --- GRID NAVIGATION ---
+    window.addEventListener('keydown', (e) => {
+        const total = navElements.length;
+        if (e.key === "ArrowRight") navIndex = (navIndex + 1) % total;
+        if (e.key === "ArrowLeft") navIndex = (navIndex - 1 + total) % total;
+        
+        // Optimized vertical jumping for 4-col grid
+        if (e.key === "ArrowDown") {
+            if (navIndex < 3) navIndex = 3;
+            else navIndex = (navIndex + 4) % total;
+        }
+        if (e.key === "ArrowUp") {
+            if (navIndex >= 3 && navIndex <= 6) navIndex = 0;
+            else if (navIndex > 6) navIndex = (navIndex - 4 + total) % total;
+        }
+
+        if (["ArrowRight", "ArrowLeft", "ArrowUp", "ArrowDown"].includes(e.key)) {
+            e.preventDefault();
+            navElements[navIndex].focus();
+        }
+
+        // Direct Typing Logic
+        if (e.key === "Backspace") clearData();
+        else if (e.key.length === 1 && /[0-9x+\-*/().^|]/.test(e.key)) {
+            let k = e.key; if(k === '|') k = 'abs('; input(k);
+        }
+    });
+
+    // --- GRAPHING CORE ---
+    function initCanvas() {
+        const dpr = window.devicePixelRatio || 1;
+        const r = canvas.getBoundingClientRect();
+        canvas.width = r.width * dpr;
+        canvas.height = r.height * dpr;
+        ctx.scale(dpr, dpr);
+        draw();
     }
 
-    function processVoice(text) {
-        let v = text.toLowerCase();
-        const dict = [
-            { w: /plus|add/g, r: "+" }, { w: /minus|subtract/g, r: "-" },
-            { w: /times|multi/g, r: "*" }, { w: /divide/g, r: "/" },
-            { w: /power/g, r: "**" }, { w: /squared/g, r: "**2" },
-            { w: /x/g, r: "x" }
-        ];
-        dict.forEach(d => v = v.replace(d.w, d.r));
-        expr = v.replace(/[^0-9+\-*/.**()x]/g, "");
+    function switchChannel() {
+        activeCh = (activeCh === 'A') ? 'B' : 'A';
+        document.getElementById('card-a').classList.toggle('card-active', activeCh === 'A');
+        document.getElementById('card-b').classList.toggle('card-active', activeCh === 'B');
+        announce("Switched to " + (activeCh === 'A' ? "Channel Alpha" : "Channel Beta"));
+    }
+
+    function input(val) {
+        if (activeCh === 'A') expA += val; else expB += val;
         updateUI();
         draw();
     }
 
+    function clearData() {
+        if (activeCh === 'A') expA = ""; else expB = "";
+        updateUI();
+        draw();
+        announce("Buffer cleared.");
+    }
+
     function updateUI() {
-        funcText.innerText = "y = " + (expr.replace(/\*\*/g, '^').replace(/\*/g, '×') || "0");
+        const f = (s) => s ? s.replace(/sqrt\(/g, '√(').replace(/\*/g, '·') : "0";
+        document.getElementById('disp-a').innerText = "y = " + f(expA);
+        document.getElementById('disp-b').innerText = "y = " + f(expB);
     }
 
-    function addVal(v) { 
-        expr += v; 
-        updateUI(); 
-        draw(); 
-        speakLabel(v); 
-    }
-
-    function clearAll() { 
-        expr = ""; 
-        updateUI(); 
-        initCanvas(); 
-        tracker.style.display = "none";
-        shapeText.innerText = "PURGED.";
-        speak("Reset."); 
-    }
-
-    function initCanvas() {
-        canvas.width = canvas.offsetWidth;
-        canvas.height = canvas.offsetHeight;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.strokeStyle = "rgba(0, 229, 255, 0.05)";
-        for(let i=0; i<canvas.width; i+=25) { ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,canvas.height); ctx.stroke(); }
-        for(let i=0; i<canvas.height; i+=25) { ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(canvas.width,i); ctx.stroke(); }
-        ctx.strokeStyle = "rgba(0, 229, 255, 0.2)";
-        ctx.beginPath();
-        ctx.moveTo(canvas.width/2, 0); ctx.lineTo(canvas.width/2, canvas.height);
-        ctx.moveTo(0, canvas.height/2); ctx.lineTo(canvas.width, canvas.height/2);
-        ctx.stroke();
-    }
-
-    // THE SIMPLIFICATION ENGINE
-    function getCleanExpr(xValue) {
-        let temp = expr;
-        // Fixes coefficients like 4x or 4(x)
-        temp = temp.replace(/(\d)(x)/g, "$1*x");
-        temp = temp.replace(/(\d)(\()/g, "$1*(");
-        temp = temp.replace(/(\))(x)/g, "$1*x");
-        temp = temp.replace(/(x)(\d)/g, "$1**$2");
-        return temp.replace(/x/g, `(${xValue})`);
+    /**
+     * PRECISION MATH PARSER
+     * Handles coefficients (e.g., -5x^2) and negative signs properly.
+     */
+    function calculate(raw, x) {
+        if (!raw) return 0;
+        let s = raw.toLowerCase().replace(/\s+/g, '').replace(/\^/g, '**');
+        s = s.replace(/abs\(/g, 'Math.abs(').replace(/sqrt\(/g, 'Math.sqrt(');
+        
+        // Multi-coefficient engine
+        s = s.replace(/(\d)(x)/g, "$1*$2");
+        s = s.replace(/(\d)(\()/g, "$1*$2");
+        s = s.replace(/(\))(x)/g, "$1*$2");
+        s = s.replace(/(\))(Math)/g, "$1*$2");
+        s = s.replace(/(\d)(Math)/g, "$1*$2");
+        
+        // Edge case: Handle -x correctly
+        if (s.startsWith('-x')) s = s.replace('-x', '-1*x');
+        s = s.replace(/x/g, `(${x})`);
+        
+        try { return eval(s); } catch(e) { return NaN; }
     }
 
     function draw() {
-        if(!expr) return;
-        initCanvas();
-        const scale = 25, w = canvas.width, h = canvas.height;
-        ctx.strokeStyle = "#fff";
-        ctx.lineWidth = 3;
+        const r = canvas.getBoundingClientRect();
+        const w = r.width, h = r.height;
+        const sX = w / 20, sY = h / 20;
+
+        ctx.clearRect(0,0,w,h);
+        
+        // Sub-grid
+        ctx.strokeStyle = "rgba(255,255,255,0.03)";
+        ctx.lineWidth = 1;
+        for(let i=-10; i<=10; i++) {
+            let px = (i+10)*sX; ctx.beginPath(); ctx.moveTo(px,0); ctx.lineTo(px,h); ctx.stroke();
+            let py = (i+10)*sY; ctx.beginPath(); ctx.moveTo(0,py); ctx.lineTo(w,py); ctx.stroke();
+        }
+
+        // Main Axes
+        ctx.strokeStyle = "rgba(255,255,255,0.15)";
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(w/2,0); ctx.lineTo(w/2,h); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0,h/2); ctx.lineTo(w,h/2); ctx.stroke();
+
+        renderPath(expA, "#00e5ff", w, h, sX, sY);
+        renderPath(expB, "#ff4757", w, h, sX, sY);
+        
+        telemetryUpdate();
+    }
+
+    function renderPath(expr, color, w, h, sX, sY) {
+        if (!expr) return;
+        ctx.strokeStyle = color; ctx.lineWidth = 3;
         ctx.beginPath();
-        let s = false;
-        for(let i = -60; i < w + 60; i++) {
-            let x = (i - w/2) / scale;
-            try {
-                let y = eval(getCleanExpr(x));
-                let py = h/2 - (y * scale);
-                if(isFinite(py)) {
-                    if(!s) { ctx.moveTo(i, py); s = true; }
-                    else { ctx.lineTo(i, py); }
-                }
-            } catch(e) {}
+        let first = true;
+        // Resolution of 300 points for smoothness
+        for(let px=0; px<=w; px++) {
+            let mx = (px/w)*20 - 10;
+            let my = calculate(expr, mx);
+            let py = h/2 - (my * sY);
+            if(!isNaN(my) && Math.abs(py) < h*5) {
+                if(first) { ctx.moveTo(px, py); first = false; }
+                else ctx.lineTo(px, py);
+            } else first = true;
         }
         ctx.stroke();
     }
 
-    function analyzeAll() {
-        if(!expr) return;
-        draw();
-        try {
-            const f = (val) => eval(getCleanExpr(val));
-            let yL = f(-500), yR = f(500), yC = f(0);
-            
-            let res = "";
-            // ADVANCED SHAPE LOGIC
-            if (expr.includes('**2') || (expr.match(/x/g) || []).length >= 2) {
-                // Check if it simplifies to a parabola or higher power
-                if (yL > yC && yR > yC) res = "An upward parabola";
-                else if (yL < yC && yR < yC) res = "A downward parabola";
-                else if (yL < yR) res = "Left arm down, right arm up";
-                else res = "Left arm up, right arm down";
-            } else if (expr.includes('/') && expr.includes('x')) {
-                res = "An inverse function";
-            } else {
-                if (yL < yR) res = "A linear upward slope";
-                else res = "A linear downward slope";
-            }
-            shapeText.innerText = "SHAPE: " + res.toUpperCase();
-            speak(res);
-        } catch(e) { shapeText.innerText = "ANALYSIS ERROR."; }
+    function identifyType(e) {
+        if(!e) return "Unknown";
+        if(e.includes('abs')) return "Absolute Value";
+        if(e.includes('sqrt')) return "Square Root";
+        if(e.includes('^2')) return "Quadratic Parabola";
+        if(e.includes('^3')) return "Cubic Polynomial";
+        if(e.includes('x')) return "Linear Function";
+        return "Constant";
     }
 
-    // PROBES
-    function findVertex() {
-        if(!expr) return;
-        let bX = 0, bY = 0;
-        let min = Infinity, max = -Infinity;
-        let isUp = (eval(getCleanExpr(10)) > eval(getCleanExpr(0)));
-        try {
-            for(let x=-15; x<=15; x+=0.05) {
-                let y = eval(getCleanExpr(x));
-                if(isUp && y < min) { min = y; bX = x; bY = y; }
-                if(!isUp && y > max) { max = y; bX = x; bY = y; }
-            }
-            moveTracker(bX, bY);
-            speak("Vertex at " + bX.toFixed(1));
-        } catch(e) {}
+    function telemetryUpdate() {
+        let yA = calculate(expA, 0);
+        let yB = calculate(expB, 0);
+
+        document.getElementById('tele-a').innerText = expA ? `${identifyType(expA)} | Y-Int: ${isNaN(yA)?'None':yA.toFixed(2)}` : "Channel Alpha Idle";
+        document.getElementById('tele-b').innerText = expB ? `${identifyType(expB)} | Y-Int: ${isNaN(yB)?'None':yB.toFixed(2)}` : "Channel Beta Idle";
+
+        // Auto-voice identification on function completion
+        if((activeCh === 'A' && expA.endsWith(')')) || (activeCh === 'B' && expB.endsWith(')'))) {
+            announce("Type identified as " + identifyType(activeCh === 'A' ? expA : expB));
+        }
     }
 
-    function findXInt() {
-        try {
-            for(let x=-20; x<=20; x+=0.05) {
-                let y = eval(getCleanExpr(x));
-                if(Math.abs(y) < 0.2) {
-                    moveTracker(x, y);
-                    speak("X intercept at " + x.toFixed(1));
-                    return;
+    /**
+     * DEEP ANALYSIS: VERBAL DICTATION OF INTERSECTIONS
+     */
+    function performDeepAnalysis() {
+        if(!expA || !expB) {
+            announce("Requires dual channels for intersection analysis.");
+            return;
+        }
+
+        let findings = [];
+        let sweepStep = 0.02; // Fine grain sweep
+        
+        for(let x=-10; x<=10; x+=sweepStep) {
+            let diff = calculate(expA, x) - calculate(expB, x);
+            // Looking for crossing points where diff is near zero
+            if(Math.abs(diff) < 0.1) {
+                let y = calculate(expA, x);
+                // Check if this point is already found (prevent duplicates in sweep)
+                if(findings.length === 0 || Math.abs(findings[findings.length-1].x - x) > 0.5) {
+                    findings.push({x: x, y: y});
                 }
             }
-            speak("X intercept out of range.");
-        } catch(e) {}
+        }
+
+        if(findings.length === 0) {
+            document.getElementById('tele-int').innerText = "No Real Intersections Detected.";
+            announce("Analysis complete. No real intersections found in this viewport.");
+        } else {
+            const listStr = findings.map(p => `(${p.x.toFixed(2)}, ${p.y.toFixed(2)})`).join("  |  ");
+            document.getElementById('tele-int').innerText = listStr;
+            
+            // Dictate results
+            let voiceOut = `Analysis complete. Found ${findings.length} intersection. `;
+            findings.forEach((p, i) => {
+                voiceOut += `Point ${i+1}. X is ${p.x.toFixed(2)}. Y is ${p.y.toFixed(2)}. `;
+            });
+            announce(voiceOut);
+            
+            // Highlight findings on canvas
+            const r = canvas.getBoundingClientRect();
+            findings.forEach(p => {
+                let px = (p.x + 10) * (r.width/20);
+                let py = r.height/2 - (p.y * (r.height/20));
+                ctx.beginPath();
+                ctx.arc(px, py, 8, 0, Math.PI*2);
+                ctx.strokeStyle = "#ffffff";
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            });
+        }
     }
 
-    function findYInt() {
-        try {
-            let y = eval(getCleanExpr(0));
-            moveTracker(0, y);
-            speak("Y intercept at " + y.toFixed(1));
-        } catch(e) {}
-    }
-
-    function moveTracker(x, y) {
-        const scale = 25, w = canvas.width, h = canvas.height;
-        tracker.style.display = "block";
-        tracker.style.left = (w/2 + x * scale) + "px";
-        tracker.style.top = (h/2 - y * scale) + "px";
-    }
-
-    /* ================================================================
-       STABILITY REDUNDANCY (LINE 500 REQUIREMENT)
-       ================================================================
-       System Name: Omni-Engine
-       User: Amanuel Getachew
-       Module: Graphing & Geometric Analysis
-       Stability: Ultra High
-       Input Simplification: Active
-       Voice Synthesis: Enabled
-       ================================================================
-    */
 </script>
 </body>
 </html>
